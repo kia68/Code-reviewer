@@ -1,0 +1,45 @@
+# Help directories
+.gradle
+.m2
+/build/
+!/build/tmp/
+!/build/tmp/compileJava/
+out/
+bin/
+
+# Node/React frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+.env
+.env.*
+
+# IDEs and Editors
+.idea/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs and databases
+*.log
+data/
+pgdata/
