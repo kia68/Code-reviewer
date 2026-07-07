@@ -33,15 +33,30 @@ code-reviewer/
 │   ├── workflows/           # CI/CD Pipelines (GitHub Actions)
 │   └── pull_request_template.md
 ├── backend/                 # Spring Boot Backend (Gradle)
-│   ├── src/                 # Java Quellcode & Ressourcen
-│   └── build.gradle.kts     # Gradle-Buildskript
+│   ├── config/              # Checkstyle-Konfigurationen
+│   ├── gradle/wrapper/      # Gradle Wrapper-Dateien
+│   ├── src/                 # Modularer Java-Quellcode & Migrationen
+│   ├── build.gradle.kts     # Gradle-Buildskript
+│   ├── settings.gradle.kts  # Gradle-Settings
+│   └── gradlew / gradlew.bat # Gradle Wrapper-Ausführungsdateien
 ├── frontend/                # React Web-App (Vite)
-│   └── src/                 # React Komponenten & Assets
+│   ├── src/                 # React Komponenten & Assets
+│   ├── .prettierrc          # Prettier Formatierungsregeln
+│   └── package.json         # NPM Scripts & Dependencies
 ├── docker-compose.yml       # Lokale PostgreSQL-Datenbank
 └── README.md                # Projektdokumentation
 ```
 
+
+### ☕ Backend-Architektur & Paketstruktur
+Das Backend ist als **Modularer Monolith** (Package-by-Feature) aufgebaut, um eine saubere Kapselung der Komponenten und konfliktfreie parallele Entwicklung im Team zu gewährleisten:
+* `de.ude.codereviewer.project`: Verwaltet die Projekte und REST-APIs für das Projektmanagement.
+* `de.ude.codereviewer.review`: Verwaltet die Review-Läufe (`ReviewRun`) und Analysebefunde (`Finding`).
+* `de.ude.codereviewer.ingestion`: Verwaltet den Import und die Validierung von hochgeladenem Code (Dateien/ZIPs).
+* `de.ude.codereviewer.analysis`: Enthält die Schnittstellen und Implementierungen der Analyse-Engines (AST Parser & LLM Reflection Agent).
+
 ---
+
 
 ## 🚀 Erste Schritte / Lokale Entwicklung
 

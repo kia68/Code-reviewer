@@ -1,2 +1,0 @@
--- Initial database schema setup placeholder
--- Tables for Project, ReviewRun and Finding will be created in E2 / US2.1

@@ -1,10 +1,7 @@
 # Help directories
 .gradle
-.m2
-/build/
-!/build/tmp/
-!/build/tmp/compileJava/
-out/
+build/
+
 bin/
 
 # Node/React frontend
