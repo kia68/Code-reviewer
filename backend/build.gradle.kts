@@ -35,6 +35,7 @@ dependencies {
     // Spring Boot Core Web & JPA
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation("org.springframework.boot:spring-boot-starter-actuator")
 
     // Database Migration (Flyway) & PostgreSQL Driver
     implementation("org.flywaydb:flyway-core")

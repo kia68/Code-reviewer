@@ -35,6 +35,8 @@ Repo, CI/CD und lokale Entwicklungsumgebung stehen, damit alle drei Personen ab 
    `area:frontend` `prio:must`
 4. **US1.4** — Als Team möchten wir Coding-Konventionen (Checkstyle/Prettier) und ein PR-Template definieren, damit Reviews im Team konsistent ablaufen.
    `area:infra` `prio:should`
+5. **US1.5** — Als Team möchten wir Secrets (DB-Zugangsdaten, künftig LLM-API-Key) über Umgebungsvariablen statt hartkodiert in versionierten Configs verwalten, damit keine Zugangsdaten im Repo landen.
+   `area:infra` `prio:should` ✅ erledigt (`application.yml` nutzt `${DB_USERNAME:...}` etc.)
 
 ## E2 – Backend-Grundgerüst & Datenmodell
 `epic` `area:backend` · Meilenstein: M1
@@ -44,7 +46,9 @@ Repo, CI/CD und lokale Entwicklungsumgebung stehen, damit alle drei Personen ab 
 2. **US2.2** — Als Nutzer:in möchte ich über eine REST-API ein Projekt anlegen können, damit ich Code dafür hochladen kann.
    `area:backend` `prio:must`
 3. **US2.3** — Als Entwickler:in möchte ich einen Health-/Status-Endpunkt haben, damit Deployment und Monitoring einfach sind.
-   `area:backend` `prio:could`
+   `area:backend` `prio:could` ✅ erledigt (Spring Boot Actuator, `/actuator/health`)
+4. **US2.4** — Als Entwickler:in möchte ich zentrales Error-Handling (`@RestControllerAdvice`) haben, damit alle Controller einheitliche Fehler-JSONs liefern statt Stacktraces zu leaken.
+   `area:backend` `prio:should` ✅ erledigt (`GlobalExceptionHandler`)
 
 ## E3 – Code-Ingestion
 `epic` `area:backend` · Meilenstein: M1–M2
