@@ -54,13 +54,13 @@ Repo, CI/CD und lokale Entwicklungsumgebung stehen, damit alle drei Personen ab 
 `epic` `area:backend` · Meilenstein: M1–M2
 
 1. **US3.1** — Als Nutzer:in möchte ich eine einzelne Datei hochladen können, damit ich schnell einen kurzen Codeausschnitt prüfen lassen kann.
-   `area:backend` `prio:must`
+   `area:backend` `prio:must` ✅ erledigt (`POST /api/projects/{id}/review-runs`, `.java`-Upload)
 2. **US3.2** — Als Nutzer:in möchte ich ein ganzes Projekt als ZIP hochladen können, damit ich mehrere Dateien im Kontext prüfen lassen kann.
-   `area:backend` `prio:must`
+   `area:backend` `prio:must` ✅ erledigt (ZIP-Extraktion mit Zip-Slip- & Zip-Bomb-Schutz)
 3. **US3.3** — Als Nutzer:in möchte ich ein öffentliches Git-Repository per URL importieren können, damit ich keine manuellen Uploads brauche.
-   `area:backend` `prio:could` (Stretch)
+   `area:backend` `prio:could` (Stretch) — noch offen
 4. **US3.4** — Als Nutzer:in möchte ich eine klare Fehlermeldung bekommen, wenn Dateiformat oder -größe nicht unterstützt werden, damit ich weiß, was ich anpassen muss.
-   `area:backend` `prio:should`
+   `area:backend` `prio:should` ✅ erledigt (400 mit Klartext-Message für Format/Größe/leere Datei/ungültige ZIP-Einträge)
 
 ## E4 – Statische Analyse-Engine
 `epic` `area:backend` · Meilenstein: M2

@@ -50,6 +50,15 @@ public class ReviewRun {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
+    @Column(name = "source_path", length = 1024)
+    private String sourcePath;
+
+    @Column(name = "file_count")
+    private Integer fileCount;
+
+    @Column(name = "total_size_bytes")
+    private Long totalSizeBytes;
+
     @Builder.Default
     @OneToMany(mappedBy = "reviewRun", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Finding> findings = new ArrayList<>();
