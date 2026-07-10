@@ -3,7 +3,6 @@ package de.ude.codereviewer.ingestion.service;
 import de.ude.codereviewer.ingestion.config.IngestionProperties;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -19,7 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class FileSystemCodeStorageService implements CodeStorageService {
 
-    private static final String JAVA_EXTENSION = ".java";
+    private static final String JAVA_EXTENSION = IngestionFileUtils.JAVA_EXTENSION;
     private static final String ZIP_EXTENSION = ".zip";
 
     private final IngestionProperties properties;
@@ -96,7 +95,7 @@ public class FileSystemCodeStorageService implements CodeStorageService {
             while ((entry = zis.getNextEntry()) != null) {
                 entryCount++;
                 if (entryCount > properties.maxZipEntries()) {
-                    deleteQuietly(targetDir);
+                    IngestionFileUtils.deleteQuietly(targetDir);
                     throw new ResponseStatusException(
                             HttpStatus.BAD_REQUEST,
                             "ZIP enthält zu viele Einträge (Limit: " + properties.maxZipEntries() + ").");
@@ -108,7 +107,7 @@ public class FileSystemCodeStorageService implements CodeStorageService {
 
                 Path entryPath = targetDir.resolve(entry.getName()).normalize();
                 if (!entryPath.startsWith(targetDir)) {
-                    deleteQuietly(targetDir);
+                    IngestionFileUtils.deleteQuietly(targetDir);
                     throw new ResponseStatusException(
                             HttpStatus.BAD_REQUEST, "Ungültiger ZIP-Eintrag: " + entry.getName());
                 }
@@ -118,58 +117,26 @@ public class FileSystemCodeStorageService implements CodeStorageService {
                 }
 
                 Files.createDirectories(entryPath.getParent());
-                long writtenBytes = copyBounded(zis, entryPath, properties.maxExtractedBytes() - totalExtractedBytes);
+                long writtenBytes = IngestionFileUtils.copyBounded(
+                        zis, entryPath, properties.maxExtractedBytes() - totalExtractedBytes);
                 totalExtractedBytes += writtenBytes;
                 extractedFiles.add(targetDir.relativize(entryPath).toString());
             }
-        } catch (ZipBombException e) {
-            deleteQuietly(targetDir);
+        } catch (IngestionFileUtils.SizeLimitExceededException e) {
+            IngestionFileUtils.deleteQuietly(targetDir);
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "ZIP überschreitet maximale entpackte Größe von " + properties.maxExtractedBytes() + " Bytes.");
         } catch (IOException e) {
-            deleteQuietly(targetDir);
+            IngestionFileUtils.deleteQuietly(targetDir);
             throw new UncheckedIOException("ZIP konnte nicht verarbeitet werden.", e);
         }
 
         if (extractedFiles.isEmpty()) {
-            deleteQuietly(targetDir);
+            IngestionFileUtils.deleteQuietly(targetDir);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ZIP enthält keine Java-Dateien.");
         }
 
         return new IngestionResult(targetDir.toString(), extractedFiles, totalExtractedBytes);
-    }
-
-    private long copyBounded(InputStream in, Path target, long remainingBudget) throws IOException {
-        byte[] buffer = new byte[8192];
-        long written = 0;
-        try (OutputStream out = Files.newOutputStream(target)) {
-            int read;
-            while ((read = in.read(buffer)) != -1) {
-                written += read;
-                if (written > remainingBudget) {
-                    throw new ZipBombException();
-                }
-                out.write(buffer, 0, read);
-            }
-        }
-        return written;
-    }
-
-    private void deleteQuietly(Path dir) {
-        try (var walk = Files.walk(dir)) {
-            walk.sorted(java.util.Comparator.reverseOrder()).forEach(path -> {
-                try {
-                    Files.deleteIfExists(path);
-                } catch (IOException ignored) {
-                    // best-effort cleanup
-                }
-            });
-        } catch (IOException ignored) {
-            // best-effort cleanup
-        }
-    }
-
-    private static final class ZipBombException extends IOException {
     }
 }

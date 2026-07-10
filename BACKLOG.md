@@ -58,7 +58,7 @@ Repo, CI/CD und lokale Entwicklungsumgebung stehen, damit alle drei Personen ab 
 2. **US3.2** — Als Nutzer:in möchte ich ein ganzes Projekt als ZIP hochladen können, damit ich mehrere Dateien im Kontext prüfen lassen kann.
    `area:backend` `prio:must` ✅ erledigt (ZIP-Extraktion mit Zip-Slip- & Zip-Bomb-Schutz)
 3. **US3.3** — Als Nutzer:in möchte ich ein öffentliches Git-Repository per URL importieren können, damit ich keine manuellen Uploads brauche.
-   `area:backend` `prio:could` (Stretch) — noch offen
+   `area:backend` `prio:could` (Stretch) ✅ erledigt (`POST /review-runs/from-git`, JGit-Shallow-Clone, https-only + SSRF-Guard gegen private/loopback Hosts)
 4. **US3.4** — Als Nutzer:in möchte ich eine klare Fehlermeldung bekommen, wenn Dateiformat oder -größe nicht unterstützt werden, damit ich weiß, was ich anpassen muss.
    `area:backend` `prio:should` ✅ erledigt (400 mit Klartext-Message für Format/Größe/leere Datei/ungültige ZIP-Einträge)
 

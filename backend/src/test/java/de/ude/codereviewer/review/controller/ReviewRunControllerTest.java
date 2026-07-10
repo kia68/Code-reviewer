@@ -3,11 +3,14 @@ package de.ude.codereviewer.review.controller;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import de.ude.codereviewer.project.model.Project;
 import de.ude.codereviewer.project.repository.ProjectRepository;
+import de.ude.codereviewer.review.dto.GitImportRequest;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -17,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +35,9 @@ class ReviewRunControllerTest {
 
     @Autowired
     private ProjectRepository projectRepository;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     private Long createProject(String name) {
         Project project = projectRepository.save(
@@ -110,6 +117,49 @@ class ReviewRunControllerTest {
                 "file", "Hello.java", "text/plain", "class Hello {}".getBytes(StandardCharsets.UTF_8));
 
         mockMvc.perform(multipart("/api/projects/999999/review-runs").file(file))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldRejectNonHttpsGitUrl() throws Exception {
+        Long projectId = createProject("Git Http Project");
+        GitImportRequest request = new GitImportRequest("http://github.com/kia68/Code-reviewer.git");
+
+        mockMvc.perform(post("/api/projects/" + projectId + "/review-runs/from-git")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldRejectBlankGitUrl() throws Exception {
+        Long projectId = createProject("Git Blank Project");
+        GitImportRequest request = new GitImportRequest("  ");
+
+        mockMvc.perform(post("/api/projects/" + projectId + "/review-runs/from-git")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldRejectGitUrlPointingAtLoopbackHost() throws Exception {
+        Long projectId = createProject("Git Loopback Project");
+        GitImportRequest request = new GitImportRequest("https://127.0.0.1/internal.git");
+
+        mockMvc.perform(post("/api/projects/" + projectId + "/review-runs/from-git")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldReturnNotFoundForMissingProjectOnGitImport() throws Exception {
+        GitImportRequest request = new GitImportRequest("https://github.com/kia68/Code-reviewer.git");
+
+        mockMvc.perform(post("/api/projects/999999/review-runs/from-git")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isNotFound());
     }
 

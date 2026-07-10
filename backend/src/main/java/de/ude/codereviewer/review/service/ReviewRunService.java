@@ -1,6 +1,7 @@
 package de.ude.codereviewer.review.service;
 
 import de.ude.codereviewer.ingestion.service.CodeStorageService;
+import de.ude.codereviewer.ingestion.service.GitCodeImportService;
 import de.ude.codereviewer.ingestion.service.IngestionResult;
 import de.ude.codereviewer.project.model.Project;
 import de.ude.codereviewer.project.repository.ProjectRepository;
@@ -10,6 +11,7 @@ import de.ude.codereviewer.review.model.ReviewStatus;
 import de.ude.codereviewer.review.repository.ReviewRunRepository;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -23,19 +25,30 @@ public class ReviewRunService {
     private final ReviewRunRepository reviewRunRepository;
     private final ProjectRepository projectRepository;
     private final CodeStorageService codeStorageService;
+    private final GitCodeImportService gitCodeImportService;
 
     public ReviewRunService(
             ReviewRunRepository reviewRunRepository,
             ProjectRepository projectRepository,
-            CodeStorageService codeStorageService) {
+            CodeStorageService codeStorageService,
+            GitCodeImportService gitCodeImportService) {
         this.reviewRunRepository = reviewRunRepository;
         this.projectRepository = projectRepository;
         this.codeStorageService = codeStorageService;
+        this.gitCodeImportService = gitCodeImportService;
     }
 
-    // Intentionally not @Transactional: the IN_PROGRESS row must be committed before storage
-    // starts, and a storage failure must still leave a committed FAILED row for the audit trail.
     public ReviewRunDto ingest(Long projectId, MultipartFile file) {
+        return runIngestion(projectId, reviewRunId -> codeStorageService.store(reviewRunId, file));
+    }
+
+    public ReviewRunDto ingestFromGit(Long projectId, String repositoryUrl) {
+        return runIngestion(projectId, reviewRunId -> gitCodeImportService.importFromUrl(reviewRunId, repositoryUrl));
+    }
+
+    // Intentionally not @Transactional: the IN_PROGRESS row must be committed before ingestion
+    // starts, and an ingestion failure must still leave a committed FAILED row for the audit trail.
+    private ReviewRunDto runIngestion(Long projectId, Function<Long, IngestionResult> ingestionAction) {
         Project project = projectRepository
                 .findById(projectId)
                 .orElseThrow(() ->
@@ -49,7 +62,7 @@ public class ReviewRunService {
 
         IngestionResult result;
         try {
-            result = codeStorageService.store(reviewRun.getId(), file);
+            result = ingestionAction.apply(reviewRun.getId());
         } catch (RuntimeException e) {
             reviewRun.setStatus(ReviewStatus.FAILED);
             reviewRun.setCompletedAt(LocalDateTime.now());

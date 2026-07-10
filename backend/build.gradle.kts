@@ -46,6 +46,9 @@ dependencies {
     // JavaParser (for AST static analysis)
     implementation("com.github.javaparser:javaparser-core:3.26.2")
 
+    // JGit (for Git-URL import, US3.3)
+    implementation("org.eclipse.jgit:org.eclipse.jgit:7.7.0.202606012155-r")
+
     // Lombok (Annotation processing for boilerplate reduction)
     compileOnly("org.projectlombok:lombok")
     annotationProcessor("org.projectlombok:lombok")
