@@ -24,6 +24,11 @@ spring:
     enabled: true
     baseline-on-migrate: true
 
+  servlet:
+    multipart:
+      max-file-size: 25MB
+      max-request-size: 25MB
+
 management:
   endpoints:
     web:
@@ -32,3 +37,11 @@ management:
   endpoint:
     health:
       show-details: always
+
+app:
+  ingestion:
+    storage-dir: ${INGESTION_STORAGE_DIR:./data/uploads}
+    max-file-size-bytes: ${INGESTION_MAX_FILE_SIZE_BYTES:2000000}
+    max-zip-size-bytes: ${INGESTION_MAX_ZIP_SIZE_BYTES:20000000}
+    max-zip-entries: ${INGESTION_MAX_ZIP_ENTRIES:2000}
+    max-extracted-bytes: ${INGESTION_MAX_EXTRACTED_BYTES:50000000}
