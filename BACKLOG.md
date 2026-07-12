@@ -70,7 +70,7 @@ Repo, CI/CD und lokale Entwicklungsumgebung stehen, damit alle drei Personen ab 
 2. **US4.2** — Als Nutzer:in möchte ich automatisch auf gängige Code-Smells (lange Methoden, tiefe Verschachtelung, ungenutzte Variablen) hingewiesen werden, damit ich offensichtliche Probleme sofort sehe.
    `area:backend` `prio:must` ✅ erledigt (`GET /review-runs/{id}/smells`: `LongMethodDetector`, `DeepNestingDetector`, `UnusedVariableDetector`)
 3. **US4.3** — Als Entwickler:in möchte ich die Findings der statischen Analyse in einem einheitlichen Format ausgeben, damit sie mit den LLM-Findings zusammengeführt werden können.
-   `area:backend` `prio:must`
+   `area:backend` `prio:must` ✅ erledigt (`POST`/`GET /review-runs/{id}/findings`, persistiert als `Finding`-Entities, reanalysierbar ohne Duplikate)
 
 ## E5 – Reflection-Agent / LLM-Review-Engine
 `epic` `area:llm` · Meilenstein: M2

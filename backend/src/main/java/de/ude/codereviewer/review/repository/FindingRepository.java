@@ -8,4 +8,6 @@ import java.util.List;
 @Repository
 public interface FindingRepository extends JpaRepository<Finding, Long> {
     List<Finding> findByReviewRunId(Long reviewRunId);
+
+    void deleteByReviewRunId(Long reviewRunId);
 }

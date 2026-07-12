@@ -2,6 +2,7 @@ package de.ude.codereviewer.review.controller;
 
 import de.ude.codereviewer.analysis.ast.AstParseReport;
 import de.ude.codereviewer.analysis.smell.SmellReport;
+import de.ude.codereviewer.review.dto.FindingDto;
 import de.ude.codereviewer.review.dto.GitImportRequest;
 import de.ude.codereviewer.review.dto.ReviewRunDto;
 import de.ude.codereviewer.review.service.ReviewRunService;
@@ -57,5 +58,15 @@ public class ReviewRunController {
     @GetMapping("/{id}/smells")
     public SmellReport getSmells(@PathVariable Long projectId, @PathVariable Long id) {
         return reviewRunService.getSmellReport(projectId, id);
+    }
+
+    @PostMapping("/{id}/findings")
+    public List<FindingDto> analyzeFindings(@PathVariable Long projectId, @PathVariable Long id) {
+        return reviewRunService.analyzeFindings(projectId, id);
+    }
+
+    @GetMapping("/{id}/findings")
+    public List<FindingDto> getFindings(@PathVariable Long projectId, @PathVariable Long id) {
+        return reviewRunService.getFindings(projectId, id);
     }
 }

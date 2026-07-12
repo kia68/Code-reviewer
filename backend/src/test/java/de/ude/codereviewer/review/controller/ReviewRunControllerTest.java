@@ -286,6 +286,100 @@ class ReviewRunControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    void shouldReturnEmptyFindingsBeforeAnalysis() throws Exception {
+        Long projectId = createProject("Findings Empty Project");
+        Long reviewRunId = ingestSingleFile(projectId, "Plain.java", "class Plain { void m() {} }");
+
+        mockMvc.perform(get("/api/projects/" + projectId + "/review-runs/" + reviewRunId + "/findings"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+    }
+
+    @Test
+    void shouldAnalyzeAndPersistFindings() throws Exception {
+        Long projectId = createProject("Findings Project");
+        Long reviewRunId = ingestSingleFile(
+                projectId,
+                "Noisy.java",
+                """
+                class Noisy {
+                    void unusedVar() {
+                        int unused = 42;
+                    }
+                }
+                """);
+
+        mockMvc.perform(post("/api/projects/" + projectId + "/review-runs/" + reviewRunId + "/findings"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].id").exists())
+                .andExpect(jsonPath("$[0].reviewRunId").value(reviewRunId))
+                .andExpect(jsonPath("$[0].category").value("UNUSED_VARIABLE"))
+                .andExpect(jsonPath("$[0].severity").value("INFO"));
+
+        mockMvc.perform(get("/api/projects/" + projectId + "/review-runs/" + reviewRunId + "/findings"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)));
+    }
+
+    @Test
+    void shouldNotAccumulateDuplicatesOnReanalysis() throws Exception {
+        Long projectId = createProject("Findings Reanalyze Project");
+        Long reviewRunId =
+                ingestSingleFile(projectId, "Noisy.java", "class Noisy { void m() { int unused = 1; } }");
+
+        mockMvc.perform(post("/api/projects/" + projectId + "/review-runs/" + reviewRunId + "/findings"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)));
+
+        mockMvc.perform(post("/api/projects/" + projectId + "/review-runs/" + reviewRunId + "/findings"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)));
+    }
+
+    @Test
+    void shouldReturnConflictForAnalyzeOnReviewRunWithoutSource() throws Exception {
+        Long projectId = createProject("Findings Failed Project");
+        byte[] zipBytes = buildZip(new String[] {"README.txt", "not java"});
+        MockMultipartFile zip = new MockMultipartFile("file", "empty.zip", "application/zip", zipBytes);
+
+        mockMvc.perform(multipart("/api/projects/" + projectId + "/review-runs").file(zip))
+                .andExpect(status().isBadRequest());
+
+        String listResponse = mockMvc.perform(get("/api/projects/" + projectId + "/review-runs"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        Long failedReviewRunId =
+                objectMapper.readTree(listResponse).get(0).get("id").asLong();
+
+        mockMvc.perform(post("/api/projects/" + projectId + "/review-runs/" + failedReviewRunId + "/findings"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void shouldReturnNotFoundForFindingsOnMissingReviewRun() throws Exception {
+        Long projectId = createProject("Findings Missing Run Project");
+
+        mockMvc.perform(get("/api/projects/" + projectId + "/review-runs/999999/findings"))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(post("/api/projects/" + projectId + "/review-runs/999999/findings"))
+                .andExpect(status().isNotFound());
+    }
+
+    private Long ingestSingleFile(Long projectId, String fileName, String source) throws Exception {
+        MockMultipartFile file =
+                new MockMultipartFile("file", fileName, "text/plain", source.getBytes(StandardCharsets.UTF_8));
+        String response = mockMvc.perform(multipart("/api/projects/" + projectId + "/review-runs").file(file))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return objectMapper.readTree(response).get("id").asLong();
+    }
+
     private byte[] buildZip(String[]... entries) throws Exception {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (ZipOutputStream zos = new ZipOutputStream(baos)) {
