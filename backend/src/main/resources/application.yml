@@ -45,3 +45,6 @@ app:
     max-zip-size-bytes: ${INGESTION_MAX_ZIP_SIZE_BYTES:20000000}
     max-zip-entries: ${INGESTION_MAX_ZIP_ENTRIES:2000}
     max-extracted-bytes: ${INGESTION_MAX_EXTRACTED_BYTES:50000000}
+  analysis:
+    long-method-line-threshold: ${ANALYSIS_LONG_METHOD_LINES:40}
+    max-nesting-depth: ${ANALYSIS_MAX_NESTING_DEPTH:3}

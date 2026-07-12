@@ -230,6 +230,62 @@ class ReviewRunControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    void shouldReturnSmellsForIngestedJavaFile() throws Exception {
+        Long projectId = createProject("Smell Project");
+        String source =
+                """
+                class Noisy {
+                    void unusedVar() {
+                        int unused = 42;
+                    }
+                }
+                """;
+        MockMultipartFile file =
+                new MockMultipartFile("file", "Noisy.java", "text/plain", source.getBytes(StandardCharsets.UTF_8));
+
+        String response = mockMvc.perform(multipart("/api/projects/" + projectId + "/review-runs").file(file))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        Long reviewRunId = objectMapper.readTree(response).get("id").asLong();
+
+        mockMvc.perform(get("/api/projects/" + projectId + "/review-runs/" + reviewRunId + "/smells"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.smells", hasSize(1)))
+                .andExpect(jsonPath("$.smells[0].category").value("UNUSED_VARIABLE"));
+    }
+
+    @Test
+    void shouldReturnConflictForSmellsOnReviewRunWithoutSource() throws Exception {
+        Long projectId = createProject("Smell Failed Project");
+        byte[] zipBytes = buildZip(new String[] {"README.txt", "not java"});
+        MockMultipartFile zip = new MockMultipartFile("file", "empty.zip", "application/zip", zipBytes);
+
+        mockMvc.perform(multipart("/api/projects/" + projectId + "/review-runs").file(zip))
+                .andExpect(status().isBadRequest());
+
+        String listResponse = mockMvc.perform(get("/api/projects/" + projectId + "/review-runs"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        Long failedReviewRunId =
+                objectMapper.readTree(listResponse).get(0).get("id").asLong();
+
+        mockMvc.perform(get("/api/projects/" + projectId + "/review-runs/" + failedReviewRunId + "/smells"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void shouldReturnNotFoundForSmellsOnMissingReviewRun() throws Exception {
+        Long projectId = createProject("Smell Missing Run Project");
+
+        mockMvc.perform(get("/api/projects/" + projectId + "/review-runs/999999/smells"))
+                .andExpect(status().isNotFound());
+    }
+
     private byte[] buildZip(String[]... entries) throws Exception {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (ZipOutputStream zos = new ZipOutputStream(baos)) {
