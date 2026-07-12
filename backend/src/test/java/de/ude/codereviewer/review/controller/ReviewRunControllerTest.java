@@ -177,6 +177,59 @@ class ReviewRunControllerTest {
                 .andExpect(jsonPath("$", hasSize(1)));
     }
 
+    @Test
+    void shouldReturnAstReportForIngestedJavaFile() throws Exception {
+        Long projectId = createProject("Ast Project");
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "Greeter.java",
+                "text/plain",
+                "class Greeter { void greet() {} }".getBytes(StandardCharsets.UTF_8));
+
+        String response = mockMvc.perform(multipart("/api/projects/" + projectId + "/review-runs").file(file))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        Long reviewRunId = objectMapper.readTree(response).get("id").asLong();
+
+        mockMvc.perform(get("/api/projects/" + projectId + "/review-runs/" + reviewRunId + "/ast"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.files", hasSize(1)))
+                .andExpect(jsonPath("$.files[0].success").value(true))
+                .andExpect(jsonPath("$.files[0].typeCount").value(1))
+                .andExpect(jsonPath("$.files[0].methodCount").value(1));
+    }
+
+    @Test
+    void shouldReturnConflictForAstOnReviewRunWithoutSource() throws Exception {
+        Long projectId = createProject("Ast Failed Project");
+        byte[] zipBytes = buildZip(new String[] {"README.txt", "not java"});
+        MockMultipartFile zip = new MockMultipartFile("file", "empty.zip", "application/zip", zipBytes);
+
+        mockMvc.perform(multipart("/api/projects/" + projectId + "/review-runs").file(zip))
+                .andExpect(status().isBadRequest());
+
+        String listResponse = mockMvc.perform(get("/api/projects/" + projectId + "/review-runs"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        Long failedReviewRunId =
+                objectMapper.readTree(listResponse).get(0).get("id").asLong();
+
+        mockMvc.perform(get("/api/projects/" + projectId + "/review-runs/" + failedReviewRunId + "/ast"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void shouldReturnNotFoundForAstOnMissingReviewRun() throws Exception {
+        Long projectId = createProject("Ast Missing Run Project");
+
+        mockMvc.perform(get("/api/projects/" + projectId + "/review-runs/999999/ast"))
+                .andExpect(status().isNotFound());
+    }
+
     private byte[] buildZip(String[]... entries) throws Exception {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (ZipOutputStream zos = new ZipOutputStream(baos)) {

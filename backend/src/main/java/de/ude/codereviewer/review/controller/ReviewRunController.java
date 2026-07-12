@@ -1,5 +1,6 @@
 package de.ude.codereviewer.review.controller;
 
+import de.ude.codereviewer.analysis.ast.AstParseReport;
 import de.ude.codereviewer.review.dto.GitImportRequest;
 import de.ude.codereviewer.review.dto.ReviewRunDto;
 import de.ude.codereviewer.review.service.ReviewRunService;
@@ -45,5 +46,10 @@ public class ReviewRunController {
     @GetMapping("/{id}")
     public ReviewRunDto getReviewRunById(@PathVariable Long projectId, @PathVariable Long id) {
         return reviewRunService.getById(projectId, id);
+    }
+
+    @GetMapping("/{id}/ast")
+    public AstParseReport getAst(@PathVariable Long projectId, @PathVariable Long id) {
+        return reviewRunService.getAstReport(projectId, id);
     }
 }

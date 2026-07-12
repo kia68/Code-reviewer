@@ -66,7 +66,7 @@ Repo, CI/CD und lokale Entwicklungsumgebung stehen, damit alle drei Personen ab 
 `epic` `area:backend` · Meilenstein: M2
 
 1. **US4.1** — Als Entwickler:in möchte ich Java-Quellcode per JavaParser in einen AST umwandeln, damit strukturelle Prüfungen möglich sind.
-   `area:backend` `prio:must`
+   `area:backend` `prio:must` ✅ erledigt (`GET /review-runs/{id}/ast`, `JavaParserAstService`, Type-/Methodenzahl je Datei)
 2. **US4.2** — Als Nutzer:in möchte ich automatisch auf gängige Code-Smells (lange Methoden, tiefe Verschachtelung, ungenutzte Variablen) hingewiesen werden, damit ich offensichtliche Probleme sofort sehe.
    `area:backend` `prio:must`
 3. **US4.3** — Als Entwickler:in möchte ich die Findings der statischen Analyse in einem einheitlichen Format ausgeben, damit sie mit den LLM-Findings zusammengeführt werden können.

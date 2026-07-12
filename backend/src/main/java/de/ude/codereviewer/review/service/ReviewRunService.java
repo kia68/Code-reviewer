@@ -1,5 +1,7 @@
 package de.ude.codereviewer.review.service;
 
+import de.ude.codereviewer.analysis.ast.AstParseReport;
+import de.ude.codereviewer.analysis.ast.AstParserService;
 import de.ude.codereviewer.ingestion.service.CodeStorageService;
 import de.ude.codereviewer.ingestion.service.GitCodeImportService;
 import de.ude.codereviewer.ingestion.service.IngestionResult;
@@ -9,6 +11,7 @@ import de.ude.codereviewer.review.dto.ReviewRunDto;
 import de.ude.codereviewer.review.model.ReviewRun;
 import de.ude.codereviewer.review.model.ReviewStatus;
 import de.ude.codereviewer.review.repository.ReviewRunRepository;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.function.Function;
@@ -26,16 +29,19 @@ public class ReviewRunService {
     private final ProjectRepository projectRepository;
     private final CodeStorageService codeStorageService;
     private final GitCodeImportService gitCodeImportService;
+    private final AstParserService astParserService;
 
     public ReviewRunService(
             ReviewRunRepository reviewRunRepository,
             ProjectRepository projectRepository,
             CodeStorageService codeStorageService,
-            GitCodeImportService gitCodeImportService) {
+            GitCodeImportService gitCodeImportService,
+            AstParserService astParserService) {
         this.reviewRunRepository = reviewRunRepository;
         this.projectRepository = projectRepository;
         this.codeStorageService = codeStorageService;
         this.gitCodeImportService = gitCodeImportService;
+        this.astParserService = astParserService;
     }
 
     public ReviewRunDto ingest(Long projectId, MultipartFile file) {
@@ -94,6 +100,17 @@ public class ReviewRunService {
         return reviewRunRepository.findByProjectIdOrderByTriggeredAtDesc(projectId).stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public AstParseReport getAstReport(Long projectId, Long reviewRunId) {
+        ReviewRun reviewRun = findOwnedReviewRun(projectId, reviewRunId);
+        if (reviewRun.getSourcePath() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Für diesen ReviewRun liegt kein Quellcode vor (Status: "
+                            + reviewRun.getStatus() + ").");
+        }
+        return astParserService.parseSourceDirectory(Path.of(reviewRun.getSourcePath()));
     }
 
     private ReviewRun findOwnedReviewRun(Long projectId, Long reviewRunId) {
