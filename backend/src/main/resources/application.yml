@@ -48,3 +48,19 @@ app:
   analysis:
     long-method-line-threshold: ${ANALYSIS_LONG_METHOD_LINES:40}
     max-nesting-depth: ${ANALYSIS_MAX_NESTING_DEPTH:3}
+
+codereviewer:
+  llm:
+    provider: anthropic
+    api-key: ${LLM_API_KEY:}
+    base-url: https://api.anthropic.com
+    model: claude-sonnet-4-5
+    max-tokens-per-call: 2048
+    max-reflect-rounds: 1
+    cache-enabled: true
+    cache-ttl-hours: 24
+    daily-token-budget: 200000
+    rate-limit:
+      calls-per-period: 10
+      period-seconds: 60
+      
