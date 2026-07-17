@@ -43,22 +43,6 @@ public class ReviewRunService {
     private final SmellDetectionService smellDetectionService;
     private final List<ReviewEngine> engines;
 
-    public ReviewRunService(
-            ReviewRunRepository reviewRunRepository,
-            ProjectRepository projectRepository,
-            FindingRepository findingRepository,
-            CodeStorageService codeStorageService,
-            GitCodeImportService gitCodeImportService,
-            AstParserService astParserService,
-            SmellDetectionService smellDetectionService) {
-        this.reviewRunRepository = reviewRunRepository;
-        this.projectRepository = projectRepository;
-        this.findingRepository = findingRepository;
-        this.codeStorageService = codeStorageService;
-        this.gitCodeImportService = gitCodeImportService;
-        this.astParserService = astParserService;
-        this.smellDetectionService = smellDetectionService;
-    }
 
     public ReviewRunDto ingest(Long projectId, MultipartFile file) {
         return runIngestion(projectId, reviewRunId -> codeStorageService.store(reviewRunId, file));

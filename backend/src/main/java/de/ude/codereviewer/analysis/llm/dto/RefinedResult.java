@@ -7,7 +7,7 @@ import java.util.List;
  * die bereinigte, endgültige Findings-Liste sowie eine optionale
  * menschenlesbare Zusammenfassung des gesamten Reviews.
  */
-public record RefinedReview(
+public record RefinedResult(
     List<FindingDraft> findings,
     String summary
 ) {
@@ -16,7 +16,7 @@ public record RefinedReview(
      * falls Claude eines der Felder leer lässt, und macht die
      * Liste defensiv unveränderlich.
      */
-    public RefinedReview {
+    public RefinedResult {
         findings = findings == null ? List.of() : List.copyOf(findings);
     }
 }

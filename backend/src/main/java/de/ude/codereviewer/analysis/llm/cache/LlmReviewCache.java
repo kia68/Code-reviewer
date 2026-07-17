@@ -3,7 +3,7 @@ package de.ude.codereviewer.analysis.llm.cache;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import de.ude.codereviewer.analysis.llm.LlmProperties;
-import de.ude.codereviewer.review.Finding;
+import de.ude.codereviewer.analysis.llm.dto.FindingDraft;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.stereotype.Component;
 
@@ -19,7 +19,7 @@ import java.util.function.Supplier;
 @Component
 public class LlmReviewCache {
 
-    private final Cache<String, List<Finding>> caffeineCache;
+    private final Cache<String, List<FindingDraft>> caffeineCache;
 
     public LlmReviewCache(LlmProperties properties) {
         this.caffeineCache = Caffeine.newBuilder()
@@ -42,7 +42,7 @@ public class LlmReviewCache {
      * oder führt den Loader aus und cached das Ergebnis, falls
      * noch kein Eintrag existiert.
      */
-    public List<Finding> get(String key, Supplier<List<Finding>> loader) {
+    public List<FindingDraft> get(String key, Supplier<List<FindingDraft>> loader) {
         return caffeineCache.get(key, k -> loader.get());
     }
 

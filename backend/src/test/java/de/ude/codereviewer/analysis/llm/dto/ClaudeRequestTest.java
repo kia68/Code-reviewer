@@ -20,7 +20,7 @@ class ClaudeRequestTest {
             "Du bist ein Reviewer.",
             List.of(new Message("user", "Analysiere: class Foo {}")),
             List.of(objectMapper.createObjectNode().put("name", "submit_findings")),
-            ClaudeRequest.ToolChoice.forced("submit_findings")
+            new ClaudeRequest.ToolChoice("tool","submit_findings")
         );
 
         String json = objectMapper.writeValueAsString(request);

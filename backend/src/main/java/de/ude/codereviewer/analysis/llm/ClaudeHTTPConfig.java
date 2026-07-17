@@ -12,7 +12,7 @@ import org.springframework.web.client.RestClient;
  */
 @Configuration
 @RequiredArgsConstructor
-public class ClaudeHttpConfig {
+public class ClaudeHTTPConfig {
 
     private final LlmProperties properties;
 

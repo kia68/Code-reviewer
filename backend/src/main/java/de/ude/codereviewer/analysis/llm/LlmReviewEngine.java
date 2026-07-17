@@ -6,7 +6,7 @@ import de.ude.codereviewer.analysis.llm.dto.FindingDraft;
 import de.ude.codereviewer.analysis.llm.dto.ReflectionResult;
 import de.ude.codereviewer.analysis.llm.ratelimit.TokenBudgetGuard;
 import de.ude.codereviewer.analysis.smell.DetectedSmell;
-import de.ude.codereviewer.analysis.review.model.Severity;
+import de.ude.codereviewer.review.model.Severity;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;

@@ -12,7 +12,7 @@ public record FindingDraft(
     int lineEnd,
 
     String message,
-    String suggestion
+    String suggestion,
 
     double confidence
 ) {}
