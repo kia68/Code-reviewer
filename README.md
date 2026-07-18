@@ -43,6 +43,10 @@ code-reviewer/
 │   ├── src/                 # React Komponenten & Assets
 │   ├── .prettierrc          # Prettier Formatierungsregeln
 │   └── package.json         # NPM Scripts & Dependencies
+├── vscode-extension/        # VS-Code-Plugin (TypeScript)
+│   ├── src/                 # Extension-Code (Command-Handler, API-Client)
+│   ├── test/                # Vitest-Tests für den API-Client
+│   └── package.json         # Extension-Manifest & NPM Scripts
 ├── docker-compose.yml       # Lokale PostgreSQL-Datenbank
 └── README.md                # Projektdokumentation
 ```
@@ -100,6 +104,22 @@ npm install
 npm run dev
 ```
 *Das Frontend läuft unter `http://localhost:5173`.*
+
+---
+
+### 4. VS-Code-Plugin ausprobieren
+Navigiere in den Plugin-Ordner, installiere die Abhängigkeiten und öffne den Ordner in VS Code:
+
+```bash
+cd vscode-extension
+npm install
+npm run compile
+```
+
+Danach in VS Code **F5** drücken (Debug-Ansicht: "Run Extension") oder den Ordner als Extension-Host starten.
+Im geöffneten Extension-Host-Fenster eine `.java`-Datei öffnen und über die Command Palette (`Strg+Shift+P`)
+**„Code Reviewer: Review starten"** ausführen. Voraussetzung: Backend läuft unter `http://localhost:8080`
+(konfigurierbar über die Einstellung `codeReviewer.apiBaseUrl`).
 
 ---
 
