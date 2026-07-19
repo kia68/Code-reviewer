@@ -31,6 +31,17 @@ export function findingsAtLine(findings: Finding[], lineIndex: number, lineCount
   return findings.filter((finding) => clampLineIndex(finding.lineNumber, lineCount) === lineIndex);
 }
 
+// Categories where "apply the suggestion" is a safe, unambiguous text edit rather than a
+// judgment call (e.g. LONG_METHOD's suggestion is "split this up", which no mechanical edit
+// can do correctly). Backend only reports a line number, not a column range, so the fix is
+// line-granular - only correct when the declaration is the only thing on its line, which is
+// the common case for this detector's output.
+const MECHANICALLY_FIXABLE_CATEGORIES = new Set(["UNUSED_VARIABLE"]);
+
+export function hasMechanicalFix(category: string): boolean {
+  return MECHANICALLY_FIXABLE_CATEGORIES.has(category);
+}
+
 // Renders one or more findings on the same line as Markdown for the hover popup:
 // category + severity as a heading, the description as the reasoning, and the suggestion
 // (if any) called out separately so it reads as an actionable next step, not more prose.

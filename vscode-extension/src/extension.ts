@@ -6,8 +6,11 @@ import {
   clampLineIndex,
   DiagnosticSeverityLevel,
   findingsAtLine,
+  hasMechanicalFix,
   severityLevel,
 } from "./diagnostics";
+
+const DIAGNOSTIC_SOURCE = "Code Reviewer";
 
 let diagnosticCollection: vscode.DiagnosticCollection;
 const findingsByDocument = new Map<string, Finding[]>();
@@ -24,6 +27,14 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.languages.registerHoverProvider({ scheme: "file", pattern: "**/*.java" }, { provideHover }),
+  );
+
+  context.subscriptions.push(
+    vscode.languages.registerCodeActionsProvider(
+      { scheme: "file", pattern: "**/*.java" },
+      { provideCodeActions },
+      { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix] },
+    ),
   );
 
   const disposable = vscode.commands.registerCommand("codeReviewer.startReview", startReview);
@@ -88,7 +99,7 @@ function toDiagnostics(document: vscode.TextDocument, findings: Finding[]): vsco
     const range = document.lineAt(lineIndex).range;
 
     const diagnostic = new vscode.Diagnostic(range, finding.description, toVsCodeSeverity(severityLevel(finding.severity)));
-    diagnostic.source = "Code Reviewer";
+    diagnostic.source = DIAGNOSTIC_SOURCE;
     diagnostic.code = finding.category;
     return diagnostic;
   });
@@ -108,6 +119,68 @@ function provideHover(document: vscode.TextDocument, position: vscode.Position):
   const markdown = new vscode.MarkdownString(buildHoverMarkdown(atLine));
   markdown.isTrusted = false;
   return new vscode.Hover(markdown, document.lineAt(position.line).range);
+}
+
+function provideCodeActions(
+  document: vscode.TextDocument,
+  _range: vscode.Range | vscode.Selection,
+  context: vscode.CodeActionContext,
+): vscode.CodeAction[] {
+  const findings = findingsByDocument.get(document.uri.toString());
+  if (!findings || findings.length === 0) {
+    return [];
+  }
+
+  const actions: vscode.CodeAction[] = [];
+  for (const diagnostic of context.diagnostics) {
+    if (diagnostic.source !== DIAGNOSTIC_SOURCE) {
+      continue;
+    }
+    const lineIndex = diagnostic.range.start.line;
+    for (const finding of findingsAtLine(findings, lineIndex, document.lineCount)) {
+      if (hasMechanicalFix(finding.category)) {
+        actions.push(buildRemoveLineAction(document, diagnostic, lineIndex));
+      }
+      if (finding.suggestion) {
+        actions.push(buildCommentSuggestionAction(document, diagnostic, finding.suggestion));
+      }
+    }
+  }
+  return actions;
+}
+
+// The one category where the suggestion ("Ungenutzte Variable entfernen") maps to an
+// unambiguous edit: delete the declaration line outright, including its line break.
+function buildRemoveLineAction(
+  document: vscode.TextDocument,
+  diagnostic: vscode.Diagnostic,
+  lineIndex: number,
+): vscode.CodeAction {
+  const action = new vscode.CodeAction("Ungenutzte Variable entfernen", vscode.CodeActionKind.QuickFix);
+  action.diagnostics = [diagnostic];
+  action.isPreferred = true;
+  const edit = new vscode.WorkspaceEdit();
+  edit.delete(document.uri, document.lineAt(lineIndex).rangeIncludingLineBreak);
+  action.edit = edit;
+  return action;
+}
+
+// Fallback for every other category: the suggestion is prose advice (e.g. "split this
+// method up"), not something we can safely rewrite for the user - so this inserts it as a
+// TODO comment right above the flagged line instead of guessing at a code transformation.
+function buildCommentSuggestionAction(
+  document: vscode.TextDocument,
+  diagnostic: vscode.Diagnostic,
+  suggestion: string,
+): vscode.CodeAction {
+  const action = new vscode.CodeAction(`Vorschlag als TODO übernehmen: ${suggestion}`, vscode.CodeActionKind.QuickFix);
+  action.diagnostics = [diagnostic];
+  const line = document.lineAt(diagnostic.range.start.line);
+  const indent = line.text.match(/^\s*/)?.[0] ?? "";
+  const edit = new vscode.WorkspaceEdit();
+  edit.insert(document.uri, line.range.start, `${indent}// TODO(Code Reviewer): ${suggestion}\n`);
+  action.edit = edit;
+  return action;
 }
 
 function toVsCodeSeverity(level: DiagnosticSeverityLevel): vscode.DiagnosticSeverity {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildHoverMarkdown, clampLineIndex, findingsAtLine, severityLevel } from "../src/diagnostics";
+import { buildHoverMarkdown, clampLineIndex, findingsAtLine, hasMechanicalFix, severityLevel } from "../src/diagnostics";
 import { Finding, Severity } from "../src/apiClient";
 
 function finding(overrides: Partial<Finding> = {}): Finding {
@@ -103,5 +103,20 @@ describe("buildHoverMarkdown", () => {
     expect(markdown).toContain("LONG_METHOD");
     expect(markdown).toContain("UNUSED_VARIABLE");
     expect(markdown).toContain("---");
+  });
+});
+
+describe("hasMechanicalFix", () => {
+  it("is true for UNUSED_VARIABLE", () => {
+    expect(hasMechanicalFix("UNUSED_VARIABLE")).toBe(true);
+  });
+
+  it("is false for categories with no safe automatic edit", () => {
+    expect(hasMechanicalFix("LONG_METHOD")).toBe(false);
+    expect(hasMechanicalFix("DEEP_NESTING")).toBe(false);
+  });
+
+  it("is false for unknown categories", () => {
+    expect(hasMechanicalFix("SOME_FUTURE_LLM_CATEGORY")).toBe(false);
   });
 });

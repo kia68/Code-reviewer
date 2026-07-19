@@ -110,7 +110,7 @@ Repo, CI/CD und lokale Entwicklungsumgebung stehen, damit alle drei Personen ab 
 3. **US7.3** — Als Entwickler:in möchte ich per Hover die Begründung und den Vorschlag sehen, damit ich ohne Kontextwechsel weiterarbeiten kann.
    `area:vscode` `prio:should` ✅ erledigt (custom `HoverProvider`, zeigt Kategorie/Severity/Begründung/Vorschlag als Markdown)
 4. **US7.4** — Als Entwickler:in möchte ich einen Vorschlag per Quick-Fix direkt übernehmen können, damit Korrekturen schneller gehen.
-   `area:vscode` `prio:could` (Stretch)
+   `area:vscode` `prio:could` (Stretch) ✅ erledigt (`CodeActionProvider`: echte Zeile-löschen-Fix für `UNUSED_VARIABLE`, TODO-Kommentar-Fix als Fallback für alle anderen Kategorien)
 
 ## E8 – Qualitätssicherung & Deployment
 `epic` `area:infra` · Meilenstein: M4
