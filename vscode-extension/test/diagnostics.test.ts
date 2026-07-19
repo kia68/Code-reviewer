@@ -1,6 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { clampLineIndex, severityLevel } from "../src/diagnostics";
-import { Severity } from "../src/apiClient";
+import { buildHoverMarkdown, clampLineIndex, findingsAtLine, severityLevel } from "../src/diagnostics";
+import { Finding, Severity } from "../src/apiClient";
+
+function finding(overrides: Partial<Finding> = {}): Finding {
+  return {
+    id: 1,
+    reviewRunId: 1,
+    filePath: "Hello.java",
+    lineNumber: 3,
+    category: "LONG_METHOD",
+    severity: "WARNING",
+    description: "Methode ist zu lang.",
+    suggestion: "In kleinere Methoden aufteilen.",
+    ...overrides,
+  };
+}
 
 describe("severityLevel", () => {
   it("maps CRITICAL to error", () => {
@@ -40,5 +54,54 @@ describe("clampLineIndex", () => {
 
   it("returns 0 for an empty document", () => {
     expect(clampLineIndex(1, 0)).toBe(0);
+  });
+});
+
+describe("findingsAtLine", () => {
+  it("returns findings whose clamped line matches the hovered line", () => {
+    const findings = [finding({ id: 1, lineNumber: 3 }), finding({ id: 2, lineNumber: 7 })];
+
+    expect(findingsAtLine(findings, 2, 10)).toEqual([findings[0]]);
+    expect(findingsAtLine(findings, 6, 10)).toEqual([findings[1]]);
+  });
+
+  it("returns an empty array when no finding matches the line", () => {
+    const findings = [finding({ lineNumber: 3 })];
+
+    expect(findingsAtLine(findings, 9, 10)).toEqual([]);
+  });
+
+  it("returns multiple findings that clamp onto the same line", () => {
+    const findings = [finding({ id: 1, lineNumber: 999 }), finding({ id: 2, lineNumber: 20 })];
+
+    expect(findingsAtLine(findings, 9, 10)).toHaveLength(2);
+  });
+});
+
+describe("buildHoverMarkdown", () => {
+  it("includes category, severity, description and suggestion", () => {
+    const markdown = buildHoverMarkdown([finding()]);
+
+    expect(markdown).toContain("LONG_METHOD");
+    expect(markdown).toContain("WARNING");
+    expect(markdown).toContain("Methode ist zu lang.");
+    expect(markdown).toContain("In kleinere Methoden aufteilen.");
+  });
+
+  it("omits the suggestion section when there is no suggestion", () => {
+    const markdown = buildHoverMarkdown([finding({ suggestion: null })]);
+
+    expect(markdown).not.toContain("Vorschlag");
+  });
+
+  it("joins multiple findings on the same line with a separator", () => {
+    const markdown = buildHoverMarkdown([
+      finding({ id: 1, category: "LONG_METHOD" }),
+      finding({ id: 2, category: "UNUSED_VARIABLE" }),
+    ]);
+
+    expect(markdown).toContain("LONG_METHOD");
+    expect(markdown).toContain("UNUSED_VARIABLE");
+    expect(markdown).toContain("---");
   });
 });
