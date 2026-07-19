@@ -1,8 +1,17 @@
 import * as path from "path";
 import * as vscode from "vscode";
-import { CodeReviewerApiClient, CodeReviewerApiError } from "./apiClient";
+import { CodeReviewerApiClient, CodeReviewerApiError, Finding } from "./apiClient";
+import { clampLineIndex, DiagnosticSeverityLevel, severityLevel } from "./diagnostics";
+
+let diagnosticCollection: vscode.DiagnosticCollection;
 
 export function activate(context: vscode.ExtensionContext): void {
+  diagnosticCollection = vscode.languages.createDiagnosticCollection("codeReviewer");
+  context.subscriptions.push(diagnosticCollection);
+  context.subscriptions.push(
+    vscode.workspace.onDidCloseTextDocument((document) => diagnosticCollection.delete(document.uri)),
+  );
+
   const disposable = vscode.commands.registerCommand("codeReviewer.startReview", startReview);
   context.subscriptions.push(disposable);
 }
@@ -43,6 +52,8 @@ async function startReview(): Promise<void> {
         progress.report({ message: "Code wird analysiert…" });
         const findings = await client.analyzeFindings(project.id, reviewRun.id);
 
+        diagnosticCollection.set(document.uri, toDiagnostics(document, findings));
+
         vscode.window.showInformationMessage(
           findings.length === 0
             ? `Review abgeschlossen: keine Findings in ${fileName}.`
@@ -54,4 +65,27 @@ async function startReview(): Promise<void> {
       }
     },
   );
+}
+
+function toDiagnostics(document: vscode.TextDocument, findings: Finding[]): vscode.Diagnostic[] {
+  return findings.map((finding) => {
+    const lineIndex = clampLineIndex(finding.lineNumber, document.lineCount);
+    const range = document.lineAt(lineIndex).range;
+
+    const diagnostic = new vscode.Diagnostic(range, finding.description, toVsCodeSeverity(severityLevel(finding.severity)));
+    diagnostic.source = "Code Reviewer";
+    diagnostic.code = finding.category;
+    return diagnostic;
+  });
+}
+
+function toVsCodeSeverity(level: DiagnosticSeverityLevel): vscode.DiagnosticSeverity {
+  switch (level) {
+    case "error":
+      return vscode.DiagnosticSeverity.Error;
+    case "warning":
+      return vscode.DiagnosticSeverity.Warning;
+    case "information":
+      return vscode.DiagnosticSeverity.Information;
+  }
 }

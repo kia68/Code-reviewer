@@ -106,7 +106,7 @@ Repo, CI/CD und lokale Entwicklungsumgebung stehen, damit alle drei Personen ab 
 1. **US7.1** — Als Entwickler:in möchte ich per Command Palette „Review starten“ aus VS Code auslösen können, damit ich meinen Editor nicht verlassen muss.
    `area:vscode` `prio:must` ✅ erledigt (`codeReviewer.startReview`, Upload + Analyse der aktiven `.java`-Datei über bestehende Backend-API)
 2. **US7.2** — Als Entwickler:in möchte ich Findings als native Diagnostics (Squiggly Lines) im Editor sehen, damit sie sich wie gewohnte Fehler-/Warnhinweise verhalten.
-   `area:vscode` `prio:must`
+   `area:vscode` `prio:must` ✅ erledigt (`DiagnosticCollection`, Severity→Error/Warning/Information gemappt, pro Zeile)
 3. **US7.3** — Als Entwickler:in möchte ich per Hover die Begründung und den Vorschlag sehen, damit ich ohne Kontextwechsel weiterarbeiten kann.
    `area:vscode` `prio:should`
 4. **US7.4** — Als Entwickler:in möchte ich einen Vorschlag per Quick-Fix direkt übernehmen können, damit Korrekturen schneller gehen.
