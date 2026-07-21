@@ -61,3 +61,9 @@ dependencies {
 tasks.withType<Test> {
     useJUnitPlatform()
 }
+
+// Only the executable bootJar is needed (e.g. for the Docker image); skip the plain jar
+// Spring Boot's plugin also produces by default.
+tasks.named<Jar>("jar") {
+    enabled = false
+}

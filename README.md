@@ -38,12 +38,14 @@ code-reviewer/
 │   ├── src/                 # Modularer Java-Quellcode & Migrationen
 │   ├── build.gradle.kts     # Gradle-Buildskript
 │   ├── settings.gradle.kts  # Gradle-Settings
-│   └── gradlew / gradlew.bat # Gradle Wrapper-Ausführungsdateien
+│   ├── gradlew / gradlew.bat # Gradle Wrapper-Ausführungsdateien
+│   └── Dockerfile           # Multi-Stage-Build (Gradle -> JRE-Image)
 ├── frontend/                # React Web-App (Vite)
 │   ├── src/                 # React Komponenten & Assets
 │   ├── .prettierrc          # Prettier Formatierungsregeln
-│   └── package.json         # NPM Scripts & Dependencies
-├── docker-compose.yml       # Lokale PostgreSQL-Datenbank
+│   ├── package.json         # NPM Scripts & Dependencies
+│   └── Dockerfile           # Multi-Stage-Build (Vite-Build -> nginx)
+├── docker-compose.yml       # Postgres + Backend + Frontend als Container
 └── README.md                # Projektdokumentation
 ```
 
@@ -69,11 +71,37 @@ Stelle sicher, dass folgende Software auf deinem Rechner installiert ist:
 
 ---
 
+### Schnellstart: alles über Docker Compose
+
+Am schnellsten testest du Backend + Frontend zusammen mit einem einzigen Befehl im Projekt-Root
+(keine lokale Java-/Node-Installation nötig, nur Docker):
+
+```bash
+docker compose up --build
+```
+
+Das startet drei Container:
+* **PostgreSQL** – Port `5432` (Datenbank `codereviewer`, User `postgres`, Passwort `password`)
+* **Backend** (Spring Boot) – `http://localhost:8080`
+* **Frontend** (React, per nginx ausgeliefert) – `http://localhost:5173`
+
+Zum Beenden: `Strg+C`, danach `docker compose down` (Datenbank-Inhalt bleibt im Volume `pgdata` erhalten,
+hochgeladener Code im Volume `backend-uploads`; `docker compose down -v` löscht auch diese Volumes).
+
+*Hinweis:* Das erste `--build` lädt Basis-Images herunter und baut Backend (Gradle) sowie Frontend
+(Vite) – je nach Internetverbindung kann das ein paar Minuten dauern. Spätere Starts (ohne Code-Änderung)
+gehen mit `docker compose up` (ohne `--build`) deutlich schneller.
+
+Wenn du stattdessen mit Hot-Reload lokal entwickeln willst (Code-Änderungen sofort sehen, ohne Neubau),
+nutze die Schritte 1–3 unten statt Docker Compose.
+
+---
+
 ### 1. Datenbank starten
 Die PostgreSQL-Datenbank wird vorkonfiguriert über Docker Compose bereitgestellt:
 
 ```bash
-docker compose up -d
+docker compose up -d postgres
 ```
 *Die Datenbank läuft auf Port `5432` mit der Datenbank `codereviewer` (User: `postgres`, Passwort: `password`).*
 

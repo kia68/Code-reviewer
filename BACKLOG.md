@@ -118,7 +118,7 @@ Repo, CI/CD und lokale Entwicklungsumgebung stehen, damit alle drei Personen ab 
 1. **US8.1** — Als Team möchten wir automatisierte Backend-Tests (JUnit/Mockito) für die Kernlogik haben, damit Regressionen früh auffallen.
    `area:infra` `prio:must`
 2. **US8.2** — Als Team möchten wir die Anwendung per Docker Compose lokal und für die Demo deployen können, damit die Präsentation reibungslos läuft.
-   `area:infra` `prio:must`
+   `area:infra` `prio:must` ✅ erledigt (`docker compose up --build` startet Postgres+Backend+Frontend; Dockerfiles für beide ergänzt)
 3. **US8.3** — Als Team möchten wir eine README mit Architekturüberblick und Setup-Anleitung haben, damit neue Mitglieder oder Dozent:innen das Projekt verstehen.
    `area:infra` `prio:should`
 4. **US8.4** — Als Team möchten wir die Abschlusspräsentation anhand eines Beispielprojekts vorbereiten, damit die Kernfeatures überzeugend gezeigt werden.
