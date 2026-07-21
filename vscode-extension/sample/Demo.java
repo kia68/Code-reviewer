@@ -7,7 +7,6 @@ public class Demo {
             if (express) {
                 if (giftWrap) {
                     if (amount > 100) {
-                        // TODO(Code Reviewer): Verschachtelte Blöcke in eigene Methoden extrahieren oder Guard-Clauses verwenden.
                         System.out.println("Express order with gift wrap over 100");
                     }
                 }
