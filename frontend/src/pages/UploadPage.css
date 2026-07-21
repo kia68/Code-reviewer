@@ -10,6 +10,36 @@
   text-decoration: underline;
 }
 
+.upload-page-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.upload-page-tab {
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 20px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  cursor: pointer;
+  color: var(--text);
+  background: var(--bg);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.upload-page-tab:hover {
+  border-color: var(--accent-border);
+  color: var(--text-h);
+}
+
+.upload-page-tab--active {
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
 .upload-page-error {
   color: #dc2626;
   font-size: 14px;
@@ -138,4 +168,44 @@
   font-size: 13px;
   color: var(--text);
   margin-left: auto;
+}
+
+.upload-page-editor-layout {
+  display: flex;
+  gap: 16px;
+}
+
+.upload-page-editor-layout .file-explorer {
+  flex: 0 0 200px;
+}
+
+.upload-page-editor-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.upload-page-history-open {
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--accent-border);
+  cursor: pointer;
+  color: var(--accent);
+  background: var(--accent-bg);
+  transition: opacity 0.15s;
+}
+
+.upload-page-history-open:hover {
+  opacity: 0.8;
+}
+
+.upload-page-history-version {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text);
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--code-bg);
 }

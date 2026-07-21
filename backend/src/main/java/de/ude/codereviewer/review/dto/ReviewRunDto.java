@@ -19,4 +19,5 @@ public class ReviewRunDto {
     private LocalDateTime completedAt;
     private Integer fileCount;
     private Long totalSizeBytes;
+    private Long parentRunId;
 }

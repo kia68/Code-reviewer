@@ -59,9 +59,17 @@ public class ReviewRun {
     @Column(name = "total_size_bytes")
     private Long totalSizeBytes;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_run_id")
+    private ReviewRun parentRun;
+
     @Builder.Default
     @OneToMany(mappedBy = "reviewRun", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Finding> findings = new ArrayList<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "reviewRun", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<StoredFile> storedFiles = new ArrayList<>();
 
     public void addFinding(Finding finding) {
         findings.add(finding);
@@ -71,5 +79,15 @@ public class ReviewRun {
     public void removeFinding(Finding finding) {
         findings.remove(finding);
         finding.setReviewRun(null);
+    }
+
+    public void addStoredFile(StoredFile storedFile) {
+        storedFiles.add(storedFile);
+        storedFile.setReviewRun(this);
+    }
+
+    public void removeStoredFile(StoredFile storedFile) {
+        storedFiles.remove(storedFile);
+        storedFile.setReviewRun(null);
     }
 }

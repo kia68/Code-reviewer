@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Finding, Severity } from "../types/api";
 import "./FindingsList.css";
 
 interface FindingsListProps {
   findings: Finding[];
+  onFilteredFindingsChange?: (findings: Finding[]) => void;
 }
 
 const ALL_SEVERITIES: Severity[] = ["CRITICAL", "WARNING", "INFO"];
@@ -79,7 +80,7 @@ function groupFindings(findings: Finding[], mode: GroupBy): GroupedFindings[] {
     .map(([label, items]) => ({ label, findings: sortFindings(items) }));
 }
 
-export function FindingsList({ findings }: FindingsListProps) {
+export function FindingsList({ findings, onFilteredFindingsChange }: FindingsListProps) {
   const [activeSeverities, setActiveSeverities] = useState<Set<Severity>>(
     () => new Set(ALL_SEVERITIES),
   );
@@ -105,6 +106,10 @@ export function FindingsList({ findings }: FindingsListProps) {
       (f) => activeSeverities.has(f.severity) && effectiveCategories.has(f.category),
     );
   }, [findings, activeSeverities, effectiveCategories]);
+
+  useEffect(() => {
+    onFilteredFindingsChange?.(filteredFindings);
+  }, [filteredFindings, onFilteredFindingsChange]);
 
   const filteredCounts = useMemo(() => {
     const counts: Record<Severity, number> = { CRITICAL: 0, WARNING: 0, INFO: 0 };

@@ -16,6 +16,14 @@ export interface ReviewRun {
   completedAt: string | null;
   fileCount: number | null;
   totalSizeBytes: number | null;
+  parentRunId: number | null;
+}
+
+export interface StoredFileDto {
+  id: number;
+  filePath: string;
+  sizeBytes: number;
+  content?: string;
 }
 
 export interface Finding {
