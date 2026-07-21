@@ -43,6 +43,10 @@ code-reviewer/
 │   ├── src/                 # React Komponenten & Assets
 │   ├── .prettierrc          # Prettier Formatierungsregeln
 │   └── package.json         # NPM Scripts & Dependencies
+├── vscode-extension/        # VS-Code-Plugin (TypeScript)
+│   ├── src/                 # Extension-Code (Command-Handler, API-Client)
+│   ├── test/                # Vitest-Tests für den API-Client
+│   └── package.json         # Extension-Manifest & NPM Scripts
 ├── docker-compose.yml       # Lokale PostgreSQL-Datenbank
 └── README.md                # Projektdokumentation
 ```
@@ -65,6 +69,7 @@ Stelle sicher, dass folgende Software auf deinem Rechner installiert ist:
 * **Java 21** (z. B. Eclipse Temurin)
 * **Node.js** (v18 oder neuer) & `npm`
 * **Docker** & **Docker Compose**
+* **Visual Studio Code** (nur fürs VS-Code-Plugin, siehe Schritt 4)
 * **GitHub CLI (gh)** (falls du das Backlog importieren möchtest)
 
 ---
@@ -100,6 +105,75 @@ npm install
 npm run dev
 ```
 *Das Frontend läuft unter `http://localhost:5173`.*
+
+---
+
+### 4. VS-Code-Plugin nutzen
+
+**Voraussetzung:** Das Backend muss laufen (Schritte 1+2 oben, erreichbar unter `http://localhost:8080`).
+Das Plugin macht sonst nichts – es hat keine eigene Analyse-Logik, sondern spricht nur die Backend-API an.
+
+#### 4.1 Installieren
+
+```bash
+cd vscode-extension
+npm install
+npm run compile
+```
+
+`npm test` führt die Unit-Tests aus (Vitest), falls du die Logik separat prüfen willst.
+
+#### 4.2 Starten
+
+Zwei Wege, eine **Extension-Development-Host**-Instanz (ein zweites VS-Code-Fenster mit aktivem Plugin) zu öffnen:
+
+**Variante A – über VS Code (F5):**
+
+1. Ordner `vscode-extension/` in VS Code öffnen.
+2. `F5` drücken (oder Debug-Ansicht → „Run Extension"). Kompiliert automatisch vorher (`npm run compile` als `preLaunchTask`).
+3. Es öffnet sich ein neues Fenster mit lila Titelleiste – das ist der Extension-Development-Host.
+
+**Variante B – per Kommandozeile (schneller, z. B. für Demos):**
+
+```bash
+code --extensionDevelopmentPath="<Pfad-zu-vscode-extension>" "<Pfad-zu-einer-.java-Datei>"
+```
+
+Braucht die `code`-CLI im PATH (VS Code → Command Palette → „Shell Command: Install 'code' command in PATH").
+Öffnet direkt ein Extension-Development-Host-Fenster mit der angegebenen Datei bereits offen.
+Im Ordner `vscode-extension/sample/Demo.java` liegt eine Testdatei mit bewusst eingebauten Findings
+(lange Methode, tiefe Verschachtelung, ungenutzte Variable) – gut geeignet zum Ausprobieren.
+
+#### 4.3 Benutzen
+
+Im Extension-Development-Host-Fenster:
+
+1. Eine `.java`-Datei öffnen (falls noch nicht offen).
+2. Command Palette öffnen: `Strg+Shift+P` (Windows/Linux) bzw. `Cmd+Shift+P` (macOS).
+3. **„Code Reviewer: Review starten"** ausführen.
+4. Datei wird hochgeladen und analysiert (Fortschritt als Notification unten rechts).
+5. Ergebnis:
+   * **Squiggly Lines** direkt im Code, farbig nach Schweregrad (Error/Warning/Information).
+   * **Problems-Panel** (`Strg+Shift+M`) listet alle Findings der Datei.
+   * **Hover** über eine markierte Zeile zeigt Kategorie, Schweregrad, Begründung und Verbesserungsvorschlag.
+   * **Quick-Fix** (Glühbirnen-Symbol oder `Strg+.` auf der markierten Zeile):
+     * bei „ungenutzte Variable" – löscht die Zeile direkt.
+     * bei allen anderen Findings – fügt den Vorschlag als `// TODO(Code Reviewer): ...`-Kommentar ein.
+
+#### 4.4 Konfiguration
+
+Einstellung `codeReviewer.apiBaseUrl` (Standard: `http://localhost:8080`) – anpassen unter
+VS-Code-Settings (`Strg+,`) → nach „Code Reviewer" suchen, falls das Backend auf einem anderen Host/Port läuft.
+
+#### 4.5 Aktuelle Einschränkungen
+
+* Nur einzelne `.java`-Dateien (die gerade aktive Datei), keine ganzen Ordner/Projekte über den Command.
+* Nur statische Analyse (lange Methoden, tiefe Verschachtelung, ungenutzte Variablen) sichtbar – die
+  LLM-Findings (Generate-Reflect-Refine) landen automatisch mit im selben Endpunkt, sobald diese Arbeit
+  im Backend gemergt ist; am Plugin ändert sich dafür nichts.
+* Quick-Fix mit echtem Code-Edit gibt es nur für „ungenutzte Variable"; alle anderen Kategorien bekommen
+  einen TODO-Kommentar statt eines automatischen Fixes, weil sich deren Vorschläge nicht sicher automatisch
+  umsetzen lassen (z. B. „Methode aufteilen").
 
 ---
 
