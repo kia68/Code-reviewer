@@ -13,11 +13,16 @@ import de.ude.codereviewer.project.model.Project;
 import de.ude.codereviewer.project.repository.ProjectRepository;
 import de.ude.codereviewer.review.dto.FindingDto;
 import de.ude.codereviewer.review.dto.ReviewRunDto;
+import de.ude.codereviewer.review.dto.StoredFileDto;
 import de.ude.codereviewer.review.model.Finding;
 import de.ude.codereviewer.review.model.ReviewRun;
 import de.ude.codereviewer.review.model.ReviewStatus;
+import de.ude.codereviewer.review.model.StoredFile;
 import de.ude.codereviewer.review.repository.FindingRepository;
 import de.ude.codereviewer.review.repository.ReviewRunRepository;
+import de.ude.codereviewer.review.repository.StoredFileRepository;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -37,11 +42,13 @@ public class ReviewRunService {
     private final ReviewRunRepository reviewRunRepository;
     private final ProjectRepository projectRepository;
     private final FindingRepository findingRepository;
+    private final StoredFileRepository storedFileRepository;
     private final CodeStorageService codeStorageService;
     private final GitCodeImportService gitCodeImportService;
     private final AstParserService astParserService;
     private final SmellDetectionService smellDetectionService;
     private final List<ReviewEngine> engines;
+
 
 
     public ReviewRunDto ingest(Long projectId, MultipartFile file) {
@@ -83,7 +90,31 @@ public class ReviewRunService {
         reviewRun.setTotalSizeBytes(result.totalSizeBytes());
         reviewRunRepository.save(reviewRun);
 
+        persistFilesFromDisk(reviewRun, Path.of(result.sourcePath()));
+
         return toDto(reviewRun);
+    }
+
+    private void persistFilesFromDisk(ReviewRun reviewRun, Path sourceDir) {
+        if (storedFileRepository.countByReviewRunId(reviewRun.getId()) > 0) {
+            return;
+        }
+        try (var stream = Files.walk(sourceDir)) {
+            List<Path> javaFiles = stream
+                    .filter(p -> p.toString().endsWith(".java"))
+                    .toList();
+            for (Path file : javaFiles) {
+                StoredFile sf = StoredFile.builder()
+                        .reviewRun(reviewRun)
+                        .filePath(sourceDir.relativize(file).toString())
+                        .content(Files.readString(file))
+                        .sizeBytes(Files.size(file))
+                        .build();
+                storedFileRepository.save(sf);
+            }
+        } catch (IOException e) {
+            // Best effort — files on disk are the source of truth if this fails
+        }
     }
 
     @Transactional(readOnly = true)
@@ -136,6 +167,83 @@ public class ReviewRunService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<StoredFileDto> listFiles(Long projectId, Long reviewRunId) {
+        ReviewRun reviewRun = findOwnedReviewRun(projectId, reviewRunId);
+        ensureStoredFilesExist(reviewRun);
+        return storedFileRepository.findByReviewRunIdOrderByFilePath(reviewRunId).stream()
+                .map(this::toStoredFileDto)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public StoredFileDto readFile(Long projectId, Long reviewRunId, String filePath) {
+        ReviewRun reviewRun = findOwnedReviewRun(projectId, reviewRunId);
+        ensureStoredFilesExist(reviewRun);
+        StoredFile sf = storedFileRepository.findByReviewRunIdAndFilePath(reviewRunId, filePath)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "File not found: " + filePath));
+        return toStoredFileDtoWithContent(sf);
+    }
+
+    @Transactional
+    public ReviewRunDto createNewVersion(Long projectId, Long parentRunId, List<StoredFileDto> files) {
+        ReviewRun parentRun = findOwnedReviewRun(projectId, parentRunId);
+        ensureStoredFilesExist(parentRun);
+
+        Project project = parentRun.getProject();
+
+        long totalSize = files.stream().mapToLong(StoredFileDto::getSizeBytes).sum();
+
+        ReviewRun newRun = reviewRunRepository.save(ReviewRun.builder()
+                .project(project)
+                .status(ReviewStatus.COMPLETED)
+                .triggeredAt(LocalDateTime.now())
+                .completedAt(LocalDateTime.now())
+                .parentRun(parentRun)
+                .fileCount(files.size())
+                .totalSizeBytes(totalSize)
+                .build());
+
+        // Persist files to DB
+        for (StoredFileDto fileDto : files) {
+            StoredFile sf = StoredFile.builder()
+                    .reviewRun(newRun)
+                    .filePath(fileDto.getFilePath())
+                    .content(fileDto.getContent())
+                    .sizeBytes(fileDto.getSizeBytes())
+                    .build();
+            storedFileRepository.save(sf);
+        }
+
+        // Write files to disk so analysis works
+        Path targetDir = Path.of("data/uploads", String.valueOf(newRun.getId())).toAbsolutePath().normalize();
+        try {
+            Files.createDirectories(targetDir);
+            for (StoredFileDto fileDto : files) {
+                Path targetFile = targetDir.resolve(fileDto.getFilePath());
+                Files.createDirectories(targetFile.getParent());
+                Files.writeString(targetFile, fileDto.getContent());
+            }
+            newRun.setSourcePath(targetDir.toString());
+            reviewRunRepository.save(newRun);
+        } catch (IOException e) {
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR, "Failed to write files to disk");
+        }
+
+        return toDto(newRun);
+    }
+
+    private void ensureStoredFilesExist(ReviewRun reviewRun) {
+        if (storedFileRepository.countByReviewRunId(reviewRun.getId()) > 0) {
+            return;
+        }
+        if (reviewRun.getSourcePath() != null) {
+            persistFilesFromDisk(reviewRun, Path.of(reviewRun.getSourcePath()));
+        }
+    }
+
     private Path requireSourcePath(ReviewRun reviewRun) {
         if (reviewRun.getSourcePath() == null) {
             throw new ResponseStatusException(
@@ -166,6 +274,24 @@ public class ReviewRunService {
                 .completedAt(reviewRun.getCompletedAt())
                 .fileCount(reviewRun.getFileCount())
                 .totalSizeBytes(reviewRun.getTotalSizeBytes())
+                .parentRunId(reviewRun.getParentRun() != null ? reviewRun.getParentRun().getId() : null)
+                .build();
+    }
+
+    private StoredFileDto toStoredFileDto(StoredFile sf) {
+        return StoredFileDto.builder()
+                .id(sf.getId())
+                .filePath(sf.getFilePath())
+                .sizeBytes(sf.getSizeBytes())
+                .build();
+    }
+
+    private StoredFileDto toStoredFileDtoWithContent(StoredFile sf) {
+        return StoredFileDto.builder()
+                .id(sf.getId())
+                .filePath(sf.getFilePath())
+                .sizeBytes(sf.getSizeBytes())
+                .content(sf.getContent())
                 .build();
     }
 
