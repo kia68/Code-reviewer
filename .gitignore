@@ -40,3 +40,6 @@ desktop.ini
 *.log
 data/
 pgdata/
+
+# Demo-Artefakt: wird aus demo/src erzeugt (siehe docs/DEMO.md)
+demo/demo-project.zip

@@ -45,6 +45,8 @@ code-reviewer/
 │   ├── .prettierrc          # Prettier Formatierungsregeln
 │   ├── package.json         # NPM Scripts & Dependencies
 │   └── Dockerfile           # Multi-Stage-Build (Vite-Build -> nginx)
+├── demo/src/                # Beispielprojekt mit bewusst eingebauten Findings
+├── docs/DEMO.md             # Ablaufplan für die Abschlusspräsentation
 ├── docker-compose.yml       # Postgres + Backend + Frontend als Container
 └── README.md                # Projektdokumentation
 ```
@@ -56,6 +58,63 @@ Das Backend ist als **Modularer Monolith** (Package-by-Feature) aufgebaut, um ei
 * `de.ude.codereviewer.review`: Verwaltet die Review-Läufe (`ReviewRun`) und Analysebefunde (`Finding`).
 * `de.ude.codereviewer.ingestion`: Verwaltet den Import und die Validierung von hochgeladenem Code (Dateien/ZIPs).
 * `de.ude.codereviewer.analysis`: Enthält die Schnittstellen und Implementierungen der Analyse-Engines (AST Parser & LLM Reflection Agent).
+
+---
+
+## 🏗️ Architektur im Überblick
+
+Beide Clients (Web-Frontend und VS-Code-Plugin) sprechen dieselbe REST-API – es gibt keine
+Analyse-Logik im Client. Dadurch verhalten sich beide Oberflächen automatisch gleich, und neue
+Analyse-Fähigkeiten im Backend erscheinen ohne Client-Änderung in beiden.
+
+```mermaid
+flowchart LR
+    FE["Web-Frontend<br/>(React + Monaco)"] -->|REST| API
+    VS["VS-Code-Plugin<br/>(Diagnostics + Hover)"] -->|REST| API
+    API["Spring Boot REST-API"] --> ING["Ingestion<br/>(Datei / ZIP / Git-URL)"]
+    ING --> FS[("Dateisystem<br/>data/uploads")]
+    API --> AST["Statische Analyse<br/>(JavaParser + Detektoren)"]
+    API --> LLM["LLM-Engine<br/>(Generate-Reflect-Refine)"]
+    AST --> DB[("PostgreSQL<br/>Findings")]
+    LLM --> DB
+```
+
+### Ablauf eines Reviews
+
+1. **Projekt anlegen** – ein `Project` gruppiert alle Review-Läufe einer Codebasis.
+2. **Code hochladen** – Einzeldatei, ZIP-Archiv oder öffentliche Git-URL. Die Ingestion validiert
+   (Format, Größe, Zip-Slip, Zip-Bomb, SSRF bei Git-URLs) und legt den Code unter `data/uploads/{reviewRunId}/` ab.
+   Es entsteht ein `ReviewRun` mit Status `IN_PROGRESS` → `COMPLETED` bzw. `FAILED`.
+3. **Analyse auslösen** – der gespeicherte Code wird per JavaParser zu einem AST geparst; darauf
+   laufen die Smell-Detektoren (lange Methoden, tiefe Verschachtelung, ungenutzte Variablen).
+4. **Findings speichern** – alle Befunde werden im einheitlichen `Finding`-Format persistiert
+   (Datei, Zeile, Kategorie, Schweregrad, Begründung, Vorschlag). Genau dieses Format nutzen
+   später auch die LLM-Findings, damit beide Quellen ohne Sonderfälle zusammenfließen.
+5. **Anzeigen** – Frontend und VS-Code-Plugin lesen dieselben Findings und stellen sie in ihrer
+   jeweils nativen Form dar (Monaco-Markierungen bzw. VS-Code-Diagnostics).
+
+---
+
+## 🔌 REST-API-Referenz
+
+| Methode | Pfad | Zweck |
+|---|---|---|
+| `POST` | `/api/projects` | Projekt anlegen (`{"name": "..."}`) |
+| `GET` | `/api/projects` | Alle Projekte auflisten |
+| `GET` | `/api/projects/{id}` | Einzelnes Projekt abrufen |
+| `POST` | `/api/projects/{projectId}/review-runs` | Code hochladen (`multipart/form-data`, Feld `file`: `.java` oder `.zip`) |
+| `POST` | `/api/projects/{projectId}/review-runs/from-git` | Öffentliches Repo importieren (`{"repositoryUrl": "https://..."}`) |
+| `GET` | `/api/projects/{projectId}/review-runs` | Review-Läufe eines Projekts auflisten |
+| `GET` | `/api/projects/{projectId}/review-runs/{id}` | Einzelnen Review-Lauf abrufen |
+| `GET` | `/api/projects/{projectId}/review-runs/{id}/ast` | AST-Parse-Report (Typen-/Methodenzahl je Datei) |
+| `GET` | `/api/projects/{projectId}/review-runs/{id}/smells` | Smells berechnen, ohne zu speichern |
+| `POST` | `/api/projects/{projectId}/review-runs/{id}/findings` | Analyse ausführen und Findings persistieren |
+| `GET` | `/api/projects/{projectId}/review-runs/{id}/findings` | Gespeicherte Findings abrufen |
+| `GET` | `/actuator/health` | Health-Check (inkl. DB-Verbindung) |
+
+Fehler liefern durchgängig ein einheitliches JSON (`timestamp`, `status`, `error`, `message`) über
+den zentralen `GlobalExceptionHandler` – u. a. `400` bei ungültigen Uploads, `404` bei unbekannten
+IDs, `409` wenn ein Review-Lauf keinen gespeicherten Quellcode hat.
 
 ---
 
@@ -128,6 +187,31 @@ npm install
 npm run dev
 ```
 *Das Frontend läuft unter `http://localhost:5173`.*
+
+---
+
+## 🧪 Tests
+
+```bash
+cd backend
+./gradlew test          # Backend: JUnit 5 + Mockito + Checkstyle
+```
+
+Die Unit-Tests der Kernlogik (`ProjectServiceTest`, `ReviewRunServiceTest`,
+`FileSystemCodeStorageServiceTest`, Detektor- und AST-Tests) laufen **ohne Datenbank**.
+Die Controller-Tests sind Integrationstests (`@SpringBootTest`) und benötigen ein laufendes
+PostgreSQL – dafür vorher `docker compose up -d postgres` starten.
+
+Die CI-Pipeline (GitHub Actions) führt Backend-Build inkl. Tests, Frontend-Build und den
+Build/Test des VS-Code-Plugins bei jedem Pull Request aus.
+
+---
+
+## 🎬 Demo / Abschlusspräsentation
+
+Unter [`docs/DEMO.md`](docs/DEMO.md) liegt ein vollständiger Ablaufplan für eine Live-Vorführung
+(Vorbereitung, Reihenfolge, erwartete Findings, Fallback-Plan). Das zugehörige Beispielprojekt in
+`demo/src/` enthält bewusst platzierte Probleme, sodass jede Kernfähigkeit genau einmal sichtbar wird.
 
 ---
 
