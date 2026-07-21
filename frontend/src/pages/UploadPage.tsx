@@ -4,6 +4,7 @@ import { useParams, Link } from "react-router";
 import { getProject } from "../api/projects";
 import { uploadFile, getReviewRuns } from "../api/review-runs";
 import { FileUpload } from "../components/FileUpload";
+import { FindingsList } from "../components/FindingsList";
 import { ApiClientError } from "../api/client";
 import type { ReviewRun, Finding } from "../types/api";
 import { apiClient } from "../api/client";
@@ -90,13 +91,13 @@ export function UploadPage() {
             </span>
           </div>
 
-          {lastCreatedRun.status === "COMPLETED" && !findings && (
+          {lastCreatedRun.status === "COMPLETED" && (
             <button
               className="upload-page-analyze"
               onClick={handleAnalyze}
               disabled={analyzeMutation.isPending}
             >
-              {analyzeMutation.isPending ? "Analyzing..." : "Analyze Code"}
+              {analyzeMutation.isPending ? "Analyzing..." : findings ? "Re-analyze Code" : "Analyze Code"}
             </button>
           )}
 
@@ -108,38 +109,7 @@ export function UploadPage() {
         </div>
       )}
 
-      {findings && (
-        <div className="upload-page-findings">
-          <h2>
-            Findings{" "}
-            <span className="upload-page-findings-count">{findings.length}</span>
-          </h2>
-          {findings.length === 0 ? (
-            <p>No issues found. Code looks clean!</p>
-          ) : (
-            <ul className="upload-page-findings-list">
-              {findings.map((f) => (
-                <li key={f.id} className={`upload-page-finding upload-page-finding--${f.severity.toLowerCase()}`}>
-                  <div className="upload-page-finding-header">
-                    <span className={`upload-page-severity upload-page-severity--${f.severity.toLowerCase()}`}>
-                      {f.severity}
-                    </span>
-                    <span className="upload-page-finding-category">{f.category}</span>
-                    <span className="upload-page-finding-file">
-                      {f.filePath}
-                      {f.lineNumber != null ? `:${f.lineNumber}` : ""}
-                    </span>
-                  </div>
-                  <p className="upload-page-finding-desc">{f.description}</p>
-                  {f.suggestion && (
-                    <p className="upload-page-finding-suggestion">{f.suggestion}</p>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
+      {findings && <FindingsList findings={findings} />}
 
       {reviewRuns && reviewRuns.length > 0 && (
         <div className="upload-page-history">
