@@ -1,0 +1,32 @@
+{
+  "name": "submit_findings",
+  "description": "Meldet strukturierte Code-Review-Findings",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "findings": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["CODE_SMELL", "LOGIC_ERROR", "SECURITY", "STYLE", "PERFORMANCE"]
+            },
+            "severity": {
+              "type": "string",
+              "enum": ["INFO", "WARNING", "CRITICAL"]
+            },
+            "lineStart": { "type": "integer" },
+            "lineEnd": { "type": "integer" },
+            "message": { "type": "string" },
+            "suggestion": { "type": "string" },
+            "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+          },
+          "required": ["type", "severity", "lineStart", "message", "confidence"]
+        }
+      }
+    },
+    "required": ["findings"]
+  }
+}

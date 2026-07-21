@@ -1,5 +1,6 @@
 package de.ude.codereviewer.review.service;
 
+import de.ude.codereviewer.analysis.ReviewEngine;
 import de.ude.codereviewer.analysis.ast.AstParseReport;
 import de.ude.codereviewer.analysis.ast.AstParserService;
 import de.ude.codereviewer.analysis.smell.DetectedSmell;
@@ -22,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +31,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
+@RequiredArgsConstructor
 public class ReviewRunService {
 
     private final ReviewRunRepository reviewRunRepository;
@@ -38,23 +41,8 @@ public class ReviewRunService {
     private final GitCodeImportService gitCodeImportService;
     private final AstParserService astParserService;
     private final SmellDetectionService smellDetectionService;
+    private final List<ReviewEngine> engines;
 
-    public ReviewRunService(
-            ReviewRunRepository reviewRunRepository,
-            ProjectRepository projectRepository,
-            FindingRepository findingRepository,
-            CodeStorageService codeStorageService,
-            GitCodeImportService gitCodeImportService,
-            AstParserService astParserService,
-            SmellDetectionService smellDetectionService) {
-        this.reviewRunRepository = reviewRunRepository;
-        this.projectRepository = projectRepository;
-        this.findingRepository = findingRepository;
-        this.codeStorageService = codeStorageService;
-        this.gitCodeImportService = gitCodeImportService;
-        this.astParserService = astParserService;
-        this.smellDetectionService = smellDetectionService;
-    }
 
     public ReviewRunDto ingest(Long projectId, MultipartFile file) {
         return runIngestion(projectId, reviewRunId -> codeStorageService.store(reviewRunId, file));
