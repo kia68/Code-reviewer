@@ -52,4 +52,10 @@ public class Finding {
 
     @Column(columnDefinition = "TEXT")
     private String suggestion;
+
+    @Column(nullable = false, length = 10)
+    private String source;
+
+    @Column
+    private Double confidence;
 }

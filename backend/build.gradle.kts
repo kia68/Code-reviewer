@@ -37,6 +37,20 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-actuator")
 
+    //Caching
+    implementation("org.springframework.boot:spring-boot-starter-cache")
+    implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
+
+    //Rate Limiting
+    implementation("io.github.resilience4j:resilience4j-ratelimiter:2.2.0")
+    implementation("io.github.resilience4j:resilience4j-spring-boot3:2.2.0")
+
+    //JSON Processing
+    implementation("com.fasterxml.jackson.core:jackson-databind")
+
+    //Content Hashing
+    implementation("commons-codec:commons-codec:1.16.1")
+
     // Database Migration (Flyway) & PostgreSQL Driver
     implementation("org.flywaydb:flyway-core")
     implementation("org.flywaydb:flyway-database-postgresql")

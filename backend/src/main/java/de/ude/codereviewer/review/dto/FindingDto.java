@@ -19,4 +19,6 @@ public class FindingDto {
     private Severity severity;
     private String description;
     private String suggestion;
+    private String source;
+    private Double confidence;
 }
