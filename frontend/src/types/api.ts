@@ -2,6 +2,8 @@ export type ReviewStatus = "IN_PROGRESS" | "COMPLETED" | "FAILED";
 
 export type Severity = "INFO" | "WARNING" | "CRITICAL";
 
+export type FindingSource = "AST" | "LLM";
+
 export interface Project {
   id: number;
   name: string;
@@ -35,6 +37,8 @@ export interface Finding {
   severity: Severity;
   description: string;
   suggestion: string;
+  source: FindingSource;
+  confidence: number | null;
 }
 
 export interface ApiError {

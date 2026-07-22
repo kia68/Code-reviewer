@@ -28,7 +28,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +39,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ReviewRunService {
 
     private final ReviewRunRepository reviewRunRepository;
@@ -149,14 +152,29 @@ public class ReviewRunService {
     public List<FindingDto> analyzeFindings(Long projectId, Long reviewRunId) {
         ReviewRun reviewRun = findOwnedReviewRun(projectId, reviewRunId);
         Path sourcePath = requireSourcePath(reviewRun);
-        SmellReport report = smellDetectionService.detectSmells(sourcePath);
 
         findingRepository.deleteByReviewRunId(reviewRunId);
-        List<Finding> findings = report.smells().stream()
-                .map(smell -> toFinding(reviewRun, smell))
-                .toList();
+        try {
+            List<Finding> findings = engines.stream()
+                    .flatMap(engine -> {
+                        try {
+                            return engine.analyze(sourcePath).stream();
+                        } catch (Exception e) {
+                            log.warn("Engine {} failed, skipping: {}", engine.source(), e.getMessage());
+                            return Stream.empty();
+                        }
+                    })
+                    .map(smell -> toFinding(reviewRun, smell))
+                    .toList();
 
-        return findingRepository.saveAll(findings).stream().map(this::toFindingDto).toList();
+            return findingRepository.saveAll(findings).stream().map(this::toFindingDto).toList();
+        } catch (Exception e) {
+            log.error("Analysis failed for run {}: {}", reviewRunId, e.getMessage());
+            reviewRun.setStatus(ReviewStatus.FAILED);
+            reviewRun.setCompletedAt(LocalDateTime.now());
+            reviewRunRepository.save(reviewRun);
+            throw e;
+        }
     }
 
     @Transactional(readOnly = true)
@@ -304,6 +322,8 @@ public class ReviewRunService {
                 .severity(smell.severity())
                 .description(smell.description())
                 .suggestion(smell.suggestion())
+                .source(smell.source())
+                .confidence(smell.confidence())
                 .build();
     }
 
@@ -317,6 +337,8 @@ public class ReviewRunService {
                 .severity(finding.getSeverity())
                 .description(finding.getDescription())
                 .suggestion(finding.getSuggestion())
+                .source(finding.getSource())
+                .confidence(finding.getConfidence())
                 .build();
     }
 }

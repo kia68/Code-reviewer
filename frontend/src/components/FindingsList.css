@@ -433,8 +433,52 @@
 
 .findings-card-suggestion {
   font-size: 13px;
-  color: var(--text);
+  color: var(--accent);
   margin: 6px 0 0;
   font-style: italic;
   line-height: 1.5;
+  padding-left: 8px;
+  border-left: 2px solid var(--accent);
+}
+
+.findings-card-source {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.findings-card-source--ast {
+  background: var(--border);
+  color: var(--text);
+}
+
+.findings-card-source--llm {
+  background: var(--accent);
+  color: #fff;
+}
+
+.findings-card-confidence {
+  font-size: 12px;
+  color: var(--text);
+  margin: 6px 0 0;
+  opacity: 0.7;
+}
+
+.findings-list-filter-btn--source-ast {
+  border-color: var(--border);
+}
+
+.findings-list-filter-btn--source-llm {
+  border-color: var(--accent);
+}
+
+.findings-file-header--source-llm {
+  border-left: 3px solid var(--accent);
+}
+
+.findings-file-header--source-ast {
+  border-left: 3px solid var(--border);
 }

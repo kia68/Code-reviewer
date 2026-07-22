@@ -35,7 +35,8 @@ public class LongMethodDetector implements SmellDetector {
                         Severity.WARNING,
                         "Methode '" + callable.getNameAsString() + "' hat " + lineCount
                                 + " Zeilen (Grenzwert: " + properties.longMethodLineThreshold() + ").",
-                        "Methode in kleinere, fokussierte Methoden aufteilen."));
+                        "Methode in kleinere, fokussierte Methoden aufteilen.",
+                        "AST", null));
             }
         }
         return smells;

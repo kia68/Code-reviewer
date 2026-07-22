@@ -17,6 +17,8 @@ function makeFinding(overrides: Partial<Finding> = {}): Finding {
     severity: "WARNING",
     description: "Method is too long",
     suggestion: "Split into smaller methods",
+    source: "AST",
+    confidence: null,
     ...overrides,
   };
 }

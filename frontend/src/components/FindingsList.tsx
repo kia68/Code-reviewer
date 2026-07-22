@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Finding, Severity } from "../types/api";
+import type { Finding, FindingSource, Severity } from "../types/api";
 import "./FindingsList.css";
 
 interface FindingsListProps {
@@ -8,7 +8,8 @@ interface FindingsListProps {
 }
 
 const ALL_SEVERITIES: Severity[] = ["CRITICAL", "WARNING", "INFO"];
-type GroupBy = "file" | "severity" | "category";
+const ALL_SOURCES: FindingSource[] = ["AST", "LLM"];
+type GroupBy = "file" | "severity" | "category" | "source";
 
 interface GroupedFindings {
   label: string;
@@ -65,6 +66,22 @@ function groupFindings(findings: Finding[], mode: GroupBy): GroupedFindings[] {
       .map(([label, items]) => ({ label, findings: sortFindings(items) }));
   }
 
+  if (mode === "source") {
+    const map = new Map<FindingSource, Finding[]>();
+    for (const f of findings) {
+      const existing = map.get(f.source);
+      if (existing) {
+        existing.push(f);
+      } else {
+        map.set(f.source, [f]);
+      }
+    }
+    const order: Record<FindingSource, number> = { AST: 0, LLM: 1 };
+    return Array.from(map.entries())
+      .sort(([a], [b]) => order[a] - order[b])
+      .map(([label, items]) => ({ label, findings: sortFindings(items) }));
+  }
+
   // category
   const map = new Map<string, Finding[]>();
   for (const f of findings) {
@@ -84,6 +101,9 @@ export function FindingsList({ findings, onFilteredFindingsChange }: FindingsLis
   const [activeSeverities, setActiveSeverities] = useState<Set<Severity>>(
     () => new Set(ALL_SEVERITIES),
   );
+  const [activeSources, setActiveSources] = useState<Set<FindingSource>>(
+    () => new Set(ALL_SOURCES),
+  );
   const [activeCategories, setActiveCategories] = useState<Set<string> | null>(null);
   const [groupBy, setGroupBy] = useState<GroupBy>("file");
 
@@ -95,7 +115,6 @@ export function FindingsList({ findings, onFilteredFindingsChange }: FindingsLis
 
   const allCategoriesSet = useMemo(() => new Set(allCategories), [allCategories]);
 
-  // effectiveCategories is the source of truth: uses activeCategories if set, otherwise all
   const effectiveCategories = useMemo(
     () => activeCategories ?? allCategoriesSet,
     [activeCategories, allCategoriesSet],
@@ -103,9 +122,12 @@ export function FindingsList({ findings, onFilteredFindingsChange }: FindingsLis
 
   const filteredFindings = useMemo(() => {
     return findings.filter(
-      (f) => activeSeverities.has(f.severity) && effectiveCategories.has(f.category),
+      (f) =>
+        activeSeverities.has(f.severity) &&
+        activeSources.has(f.source) &&
+        effectiveCategories.has(f.category),
     );
-  }, [findings, activeSeverities, effectiveCategories]);
+  }, [findings, activeSeverities, activeSources, effectiveCategories]);
 
   useEffect(() => {
     onFilteredFindingsChange?.(filteredFindings);
@@ -116,6 +138,11 @@ export function FindingsList({ findings, onFilteredFindingsChange }: FindingsLis
     for (const f of filteredFindings) counts[f.severity]++;
     return counts;
   }, [filteredFindings]);
+
+  const filteredSourceCounts = useMemo(
+    () => countBy(filteredFindings, (f) => f.source),
+    [filteredFindings],
+  );
 
   const filteredCategoryCounts = useMemo(
     () => countBy(filteredFindings, (f) => f.category),
@@ -129,10 +156,12 @@ export function FindingsList({ findings, onFilteredFindingsChange }: FindingsLis
 
   const isFiltered =
     activeSeverities.size < ALL_SEVERITIES.length ||
+    activeSources.size < ALL_SOURCES.length ||
     (allCategories.length > 1 && activeCategories !== null && activeCategories.size < allCategories.length);
 
   const resetFilters = () => {
     setActiveSeverities(new Set(ALL_SEVERITIES));
+    setActiveSources(new Set(ALL_SOURCES));
     setActiveCategories(null);
   };
 
@@ -143,6 +172,18 @@ export function FindingsList({ findings, onFilteredFindingsChange }: FindingsLis
         if (next.size > 1) next.delete(sev);
       } else {
         next.add(sev);
+      }
+      return next;
+    });
+  };
+
+  const toggleSource = (src: FindingSource) => {
+    setActiveSources((prev) => {
+      const next = new Set(prev);
+      if (next.has(src)) {
+        if (next.size > 1) next.delete(src);
+      } else {
+        next.add(src);
       }
       return next;
     });
@@ -191,6 +232,21 @@ export function FindingsList({ findings, onFilteredFindingsChange }: FindingsLis
           ))}
         </div>
 
+        {findings.some((f) => f.source === "LLM") && (
+          <div className="findings-list-filter-row">
+            <span className="findings-list-filter-label">Source:</span>
+            {ALL_SOURCES.map((src) => (
+              <button
+                key={src}
+                className={`findings-list-filter-btn findings-list-filter-btn--source findings-list-filter-btn--source-${src.toLowerCase()} ${activeSources.has(src) ? "" : "findings-list-filter-btn--inactive"}`}
+                onClick={() => toggleSource(src)}
+              >
+                {filteredSourceCounts.get(src) ?? 0} {src === "LLM" ? "AI" : src}
+              </button>
+            ))}
+          </div>
+        )}
+
         {allCategories.length > 1 && (
           <div className="findings-list-filter-row">
             <span className="findings-list-filter-label">Category:</span>
@@ -209,7 +265,7 @@ export function FindingsList({ findings, onFilteredFindingsChange }: FindingsLis
         <div className="findings-list-filter-row">
           <span className="findings-list-filter-label">Group by:</span>
           <div className="findings-list-groupby">
-            {(["file", "severity", "category"] as const).map((mode) => (
+            {(["file", "severity", "category", "source"] as const).map((mode) => (
               <label key={mode} className="findings-list-groupby-option">
                 <input
                   type="radio"
@@ -254,12 +310,14 @@ function GroupSection({ group, groupBy }: { group: GroupedFindings; groupBy: Gro
       ? group.label
       : groupBy === "severity"
         ? group.label.charAt(0) + group.label.slice(1).toLowerCase()
-        : group.label;
+        : groupBy === "source"
+          ? group.label === "LLM" ? "AI" : group.label
+          : group.label;
 
   return (
     <div className="findings-file-group">
       <button
-        className={`findings-file-header ${groupBy === "severity" ? `findings-file-header--${group.label.toLowerCase()}` : ""}`}
+        className={`findings-file-header ${groupBy === "severity" ? `findings-file-header--${group.label.toLowerCase()}` : ""} ${groupBy === "source" ? `findings-file-header--source-${group.label.toLowerCase()}` : ""}`}
         onClick={() => setIsExpanded(!isExpanded)}
         aria-expanded={isExpanded}
       >
@@ -293,6 +351,9 @@ function FindingCard({ finding }: { finding: Finding }) {
         <span className={`findings-card-severity findings-card-severity--${finding.severity.toLowerCase()}`}>
           {finding.severity}
         </span>
+        <span className={`findings-card-source findings-card-source--${finding.source.toLowerCase()}`}>
+          {finding.source === "LLM" ? "AI" : finding.source}
+        </span>
         <span className="findings-card-category">{finding.category}</span>
         {finding.lineNumber != null && (
           <span className="findings-card-line">line {finding.lineNumber}</span>
@@ -305,6 +366,11 @@ function FindingCard({ finding }: { finding: Finding }) {
           <p className="findings-card-desc">{finding.description}</p>
           {finding.suggestion && (
             <p className="findings-card-suggestion">{finding.suggestion}</p>
+          )}
+          {finding.confidence != null && (
+            <p className="findings-card-confidence">
+              Confidence: {Math.round(finding.confidence * 100)}%
+            </p>
           )}
         </div>
       )}

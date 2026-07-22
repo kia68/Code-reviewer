@@ -62,7 +62,7 @@ export function CodeEditor({
         startColumn: 1,
         endLineNumber: f.lineNumber!,
         endColumn: Number.MAX_VALUE,
-        message: `${f.category}: ${f.description}`,
+        message: `[${f.source === "LLM" ? "AI" : f.source}] ${f.category}: ${f.description}`,
       }));
 
     monacoRef.current.editor.setModelMarkers(model, "code-reviewer", monacoMarkers);

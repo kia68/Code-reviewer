@@ -48,7 +48,8 @@ public class DeepNestingDetector implements SmellDetector {
                                     "Methode '" + callable.getNameAsString() + "' verschachtelt Kontrollstrukturen "
                                             + deepest.depth() + " Ebenen tief (Grenzwert: "
                                             + properties.maxNestingDepth() + ").",
-                                    "Verschachtelte Blöcke in eigene Methoden extrahieren oder Guard-Clauses verwenden."));
+                                    "Verschachtelte Blöcke in eigene Methoden extrahieren oder Guard-Clauses verwenden.",
+                                    "AST", null));
                         }
                     });
         }
