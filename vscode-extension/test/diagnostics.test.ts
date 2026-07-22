@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { buildHoverMarkdown, clampLineIndex, findingsAtLine, hasMechanicalFix, severityLevel } from "../src/diagnostics";
+import {
+  buildHoverMarkdown,
+  clampLineIndex,
+  findingsAtLine,
+  hasMechanicalFix,
+  severityLevel,
+  sourceLabel,
+} from "../src/diagnostics";
 import { Finding, Severity } from "../src/apiClient";
 
 function finding(overrides: Partial<Finding> = {}): Finding {
@@ -103,6 +110,41 @@ describe("buildHoverMarkdown", () => {
     expect(markdown).toContain("LONG_METHOD");
     expect(markdown).toContain("UNUSED_VARIABLE");
     expect(markdown).toContain("---");
+  });
+
+  it("shows the KI badge for LLM-sourced findings", () => {
+    const markdown = buildHoverMarkdown([finding({ source: "LLM" })]);
+
+    expect(markdown).toContain("KI");
+  });
+
+  it("shows the AST badge for static-analysis findings", () => {
+    const markdown = buildHoverMarkdown([finding({ source: "AST" })]);
+
+    expect(markdown).toContain("AST");
+  });
+
+  it("shows no origin badge when the source is missing", () => {
+    const markdown = buildHoverMarkdown([finding({ source: null })]);
+
+    expect(markdown).not.toContain("KI");
+    expect(markdown).not.toContain("📐");
+  });
+});
+
+describe("sourceLabel", () => {
+  it("labels LLM findings as KI", () => {
+    expect(sourceLabel("LLM")).toContain("KI");
+  });
+
+  it("labels AST findings as AST", () => {
+    expect(sourceLabel("AST")).toContain("AST");
+  });
+
+  it("returns an empty label for unknown or missing sources", () => {
+    expect(sourceLabel(null)).toBe("");
+    expect(sourceLabel(undefined)).toBe("");
+    expect(sourceLabel("SOMETHING")).toBe("");
   });
 });
 

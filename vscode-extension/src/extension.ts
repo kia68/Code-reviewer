@@ -99,7 +99,9 @@ function toDiagnostics(document: vscode.TextDocument, findings: Finding[]): vsco
     const range = document.lineAt(lineIndex).range;
 
     const diagnostic = new vscode.Diagnostic(range, finding.description, toVsCodeSeverity(severityLevel(finding.severity)));
-    diagnostic.source = DIAGNOSTIC_SOURCE;
+    // Surface the origin (KI vs static analysis) in the Problems-panel source column.
+    const origin = finding.source === "LLM" ? "KI" : finding.source === "AST" ? "AST" : "";
+    diagnostic.source = origin ? `${DIAGNOSTIC_SOURCE} · ${origin}` : DIAGNOSTIC_SOURCE;
     diagnostic.code = finding.category;
     return diagnostic;
   });
@@ -133,7 +135,7 @@ function provideCodeActions(
 
   const actions: vscode.CodeAction[] = [];
   for (const diagnostic of context.diagnostics) {
-    if (diagnostic.source !== DIAGNOSTIC_SOURCE) {
+    if (!diagnostic.source || !diagnostic.source.startsWith(DIAGNOSTIC_SOURCE)) {
       continue;
     }
     const lineIndex = diagnostic.range.start.line;

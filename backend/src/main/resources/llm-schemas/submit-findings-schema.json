@@ -10,8 +10,7 @@
           "type": "object",
           "properties": {
             "type": {
-              "type": "string",
-              "enum": ["CODE_SMELL", "LOGIC_ERROR", "SECURITY", "STYLE", "PERFORMANCE"]
+              "type": "string"
             },
             "severity": {
               "type": "string",

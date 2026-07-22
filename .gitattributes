@@ -1,0 +1,8 @@
+# Keep shell scripts LF even on Windows checkouts, otherwise CRLF breaks their
+# shebang inside Linux containers (e.g. gradlew -> exit 127 in the Docker build).
+gradlew    text eol=lf
+*.sh       text eol=lf
+
+# Windows batch files stay CRLF.
+*.bat      text eol=crlf
+gradlew.bat text eol=crlf

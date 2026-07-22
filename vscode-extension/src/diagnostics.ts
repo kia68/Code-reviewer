@@ -42,13 +42,31 @@ export function hasMechanicalFix(category: string): boolean {
   return MECHANICALLY_FIXABLE_CATEGORIES.has(category);
 }
 
+// Human-readable origin badge for a finding. "LLM" -> KI (the AI review),
+// "AST" -> static analysis. Unknown/missing source yields an empty label so
+// older findings degrade gracefully.
+export function sourceLabel(source: string | null | undefined): string {
+  switch (source) {
+    case "LLM":
+      return "🤖 KI";
+    case "AST":
+      return "📐 AST";
+    default:
+      return "";
+  }
+}
+
 // Renders one or more findings on the same line as Markdown for the hover popup:
-// category + severity as a heading, the description as the reasoning, and the suggestion
-// (if any) called out separately so it reads as an actionable next step, not more prose.
+// category + severity + origin (KI/AST) as a heading, the description as the reasoning,
+// and the suggestion (if any) called out separately as an actionable next step.
 export function buildHoverMarkdown(findings: Finding[]): string {
   return findings
     .map((finding) => {
-      const sections = [`**${finding.category}** _(${finding.severity})_`, "", finding.description];
+      const badge = sourceLabel(finding.source);
+      const heading = badge
+        ? `**${finding.category}** _(${finding.severity})_ · ${badge}`
+        : `**${finding.category}** _(${finding.severity})_`;
+      const sections = [heading, "", finding.description];
       if (finding.suggestion) {
         sections.push("", `**Vorschlag:** ${finding.suggestion}`);
       }

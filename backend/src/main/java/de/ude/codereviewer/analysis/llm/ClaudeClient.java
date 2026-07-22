@@ -12,6 +12,7 @@ import java.util.List;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
@@ -25,8 +26,9 @@ import org.springframework.web.client.RestClient;
  * und behandelt transiente Fehler (Rate-Limits, Server-Fehler) mit
  * automatischem Retry inklusive Backoff.
  */
+import org.springframework.beans.factory.annotation.Qualifier;
+
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class ClaudeClient {
 
@@ -44,6 +46,14 @@ public class ClaudeClient {
     private final RestClient restClient;
     private final LlmProperties properties;
     private final ObjectMapper objectMapper;
+
+    public ClaudeClient(@Qualifier("claudeRestClient") RestClient restClient,
+                        LlmProperties properties,
+                        ObjectMapper objectMapper) {
+        this.restClient = restClient;
+        this.properties = properties;
+        this.objectMapper = objectMapper;
+    }
 
     /**
      * Führt einen Claude-API-Call mit erzwungenem Tool-Use aus.
