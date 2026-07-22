@@ -138,16 +138,38 @@ Stelle sicher, dass folgende Software auf deinem Rechner installiert ist:
 ### Schnellstart: alles über Docker Compose
 
 Am schnellsten testest du Backend + Frontend zusammen mit einem einzigen Befehl im Projekt-Root
-(keine lokale Java-/Node-Installation nötig, nur Docker):
+(keine lokale Java-/Node-Installation nötig, nur Docker).
 
-```bash
-docker compose up --build
-```
+**Was du vorher tun musst:**
+
+1. **Docker Desktop starten** und warten, bis es läuft (`docker info` liefert keinen Fehler).
+2. *(Optional, für KI-Review)* Anthropic-API-Schlüssel in der aktuellen Shell setzen – **vor** dem
+   `docker compose up`, damit der Backend-Container ihn übernimmt. Ohne Schlüssel läuft alles, nur
+   ohne LLM-Findings (siehe [Abschnitt 2.1](#21-llm-api-schlüssel-konfigurieren-optional)).
+
+   ```powershell
+   # PowerShell (Windows)
+   $env:LLM_API_KEY = "sk-ant-..."
+   ```
+   ```bash
+   # bash (macOS/Linux)
+   export LLM_API_KEY="sk-ant-..."
+   ```
+
+3. **Stack bauen und starten** (im Projekt-Root):
+
+   ```bash
+   docker compose up --build
+   ```
 
 Das startet drei Container:
 * **PostgreSQL** – Port `5432` (Datenbank `codereviewer`, User `postgres`, Passwort `password`)
 * **Backend** (Spring Boot) – `http://localhost:8080`
 * **Frontend** (React, per nginx ausgeliefert) – `http://localhost:5173`
+
+**Bereit?** Warte, bis `curl http://localhost:8080/actuator/health` `{"status":"UP"}` liefert –
+dann Frontend unter `http://localhost:5173` öffnen. Zum Ausprobieren `demo/demo-project.zip`
+hochladen (siehe [`docs/DEMO.md`](docs/DEMO.md)).
 
 Zum Beenden: `Strg+C`, danach `docker compose down` (Datenbank-Inhalt bleibt im Volume `pgdata` erhalten,
 hochgeladener Code im Volume `backend-uploads`; `docker compose down -v` löscht auch diese Volumes).
@@ -185,7 +207,7 @@ cd backend
 
 ### 2.1 LLM-API-Schlüssel konfigurieren (optional)
 
-Das Backend unterstützt optionale KI-gestützte Code-Reviews über die Anthropic Claude API. Ohne einen API-Schlüssel werden **nur die statischen AST-Analysen** (lange Methoden, tiefe Verschachtelung, ungenutzte Variablen) ausgeführt – das Tool funktioniert otherwise vollständig.
+Das Backend unterstützt optionale KI-gestützte Code-Reviews über die Anthropic Claude API. Ohne einen API-Schlüssel werden **nur die statischen AST-Analysen** (lange Methoden, tiefe Verschachtelung, ungenutzte Variablen) ausgeführt – das Tool funktioniert ansonsten vollständig.
 
 **So richtest du den LLM-Review ein:**
 
@@ -194,17 +216,31 @@ Das Backend unterstützt optionale KI-gestützte Code-Reviews über die Anthropi
 2. Beim Starten des Backends die Umgebungsvariable `LLM_API_KEY` setzen:
 
 ```bash
-# Variante A: Direkt beim Start
+# Variante A: Lokaler Start (Host), direkt beim Befehl (bash)
 LLM_API_KEY="sk-ant-..." ./gradlew bootRun
 
-# Variante B: In einer .env-Datei (mit z.B. direkten Export)
-export LLM_API_KEY="sk-ant-..."
+# Variante B: Lokaler Start (Host), vorher exportieren
+export LLM_API_KEY="sk-ant-..."   # bash
 ./gradlew bootRun
+```
 
-# Variante C: In docker-compose.yml als Umgebungsvariable
+```powershell
+# Variante A/B unter Windows PowerShell
+$env:LLM_API_KEY = "sk-ant-..."
+.\gradlew bootRun
+```
+
+```bash
+# Variante C: Docker Compose – Schlüssel in der Shell setzen, dann starten.
+# docker-compose.yml reicht LLM_API_KEY über ${LLM_API_KEY:-} an den Backend-Container durch;
+# ist die Variable nicht gesetzt, bleibt sie leer (nur AST).
+export LLM_API_KEY="sk-ant-..."       # bzw. $env:LLM_API_KEY = "sk-ant-..." in PowerShell
+docker compose up --build
 ```
 
 3. Das Backend erkennt den Schlüssel automatisch und aktiviert den LLM-Review für alle hochgeladenen Projekte.
+   Kontrolle: `docker compose logs backend | grep LLM` – erscheint `LLM API key not configured`, ist kein
+   Schlüssel angekommen; ohne diese Meldung läuft der LLM-Review.
 
 **Weitere LLM-Einstellungen** (in `application.yml` unter `codereviewer.llm` konfigurierbar):
 
