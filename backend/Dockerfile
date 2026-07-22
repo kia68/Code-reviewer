@@ -4,7 +4,9 @@ WORKDIR /app
 COPY gradlew settings.gradle.kts build.gradle.kts ./
 COPY gradle ./gradle
 COPY config ./config
-RUN chmod +x gradlew
+# Strip CRLF: on a Windows/OneDrive checkout gradlew carries \r line endings, which breaks the
+# shebang inside the Linux build image (`./gradlew` -> exit 127 "not found"). Normalise before use.
+RUN sed -i 's/\r$//' gradlew && chmod +x gradlew
 
 COPY src ./src
 RUN ./gradlew bootJar --no-daemon -x test
