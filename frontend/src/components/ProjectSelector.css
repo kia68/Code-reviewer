@@ -82,6 +82,14 @@
   box-shadow: var(--shadow);
 }
 
+.project-selector-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
 .project-selector-name {
   font-size: 15px;
   font-weight: 500;
@@ -91,6 +99,24 @@
 .project-selector-date {
   font-size: 13px;
   color: var(--text);
+}
+
+.project-selector-delete {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--text);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: color 0.2s, background 0.2s;
+}
+
+.project-selector-delete:hover {
+  color: #dc2626;
+  background: rgba(220, 38, 38, 0.1);
 }
 
 .project-selector-hint {
@@ -108,5 +134,10 @@
 @media (prefers-color-scheme: dark) {
   .project-selector-error {
     color: #f87171;
+  }
+
+  .project-selector-delete:hover {
+    color: #f87171;
+    background: rgba(248, 113, 113, 0.1);
   }
 }

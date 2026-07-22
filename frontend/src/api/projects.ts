@@ -12,3 +12,7 @@ export async function getProjects(): Promise<Project[]> {
 export async function getProject(id: number): Promise<Project> {
   return apiClient.get<Project>(`/projects/${id}`);
 }
+
+export async function deleteProject(id: number): Promise<void> {
+  return apiClient.delete(`/projects/${id}`);
+}

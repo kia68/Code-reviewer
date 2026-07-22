@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { createProject, getProjects } from "../api/projects";
+import { createProject, deleteProject, getProjects } from "../api/projects";
 import type { Project } from "../types/api";
 import { ApiClientError } from "../api/client";
 import "./ProjectSelector.css";
@@ -28,6 +28,13 @@ export function ProjectSelector({ onSelect }: ProjectSelectorProps) {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       setNewName("");
       onSelect(project);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteProject,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
     },
   });
 
@@ -75,16 +82,29 @@ export function ProjectSelector({ onSelect }: ProjectSelectorProps) {
         <div className="project-selector-list">
           <p className="project-selector-label">Existing projects</p>
           {projects.map((project) => (
-            <button
+            <div
               key={project.id}
               className="project-selector-item"
               onClick={() => onSelect(project)}
             >
-              <span className="project-selector-name">{project.name}</span>
-              <span className="project-selector-date">
-                {new Date(project.createdAt).toLocaleDateString()}
-              </span>
-            </button>
+              <div className="project-selector-info">
+                <span className="project-selector-name">{project.name}</span>
+                <span className="project-selector-date">
+                  {new Date(project.createdAt).toLocaleDateString()}
+                </span>
+              </div>
+              <button
+                className="project-selector-delete"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (window.confirm(`Delete project "${project.name}" and all its review runs?`)) {
+                    deleteMutation.mutate(project.id);
+                  }
+                }}
+              >
+                &times;
+              </button>
+            </div>
           ))}
         </div>
       )}
