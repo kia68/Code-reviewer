@@ -1,0 +1,33 @@
+{
+  "name": "submit_reflection",
+  "description": "Kritische Prüfung der eigenen initialen Findings",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "reflections": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "findingIndex": { "type": "integer" },
+            "verdict": {
+              "type": "string",
+              "enum": ["CONFIRMED", "FALSE_POSITIVE", "SEVERITY_ADJUSTED"]
+            },
+            "revisedSeverity": {
+              "type": "string",
+              "enum": ["INFO", "WARNING", "CRITICAL"]
+            },
+            "reasoning": { "type": "string" }
+          },
+          "required": ["findingIndex", "verdict", "reasoning"]
+        }
+      },
+      "missedIssues": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    },
+    "required": ["reflections"]
+  }
+}

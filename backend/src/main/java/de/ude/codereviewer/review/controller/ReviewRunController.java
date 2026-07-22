@@ -5,6 +5,7 @@ import de.ude.codereviewer.analysis.smell.SmellReport;
 import de.ude.codereviewer.review.dto.FindingDto;
 import de.ude.codereviewer.review.dto.GitImportRequest;
 import de.ude.codereviewer.review.dto.ReviewRunDto;
+import de.ude.codereviewer.review.dto.StoredFileDto;
 import de.ude.codereviewer.review.service.ReviewRunService;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -68,5 +69,27 @@ public class ReviewRunController {
     @GetMapping("/{id}/findings")
     public List<FindingDto> getFindings(@PathVariable Long projectId, @PathVariable Long id) {
         return reviewRunService.getFindings(projectId, id);
+    }
+
+    @GetMapping("/{id}/files")
+    public List<StoredFileDto> listFiles(@PathVariable Long projectId, @PathVariable Long id) {
+        return reviewRunService.listFiles(projectId, id);
+    }
+
+    @GetMapping("/{id}/files/content")
+    public StoredFileDto readFile(
+            @PathVariable Long projectId,
+            @PathVariable Long id,
+            @RequestParam("path") String filePath) {
+        return reviewRunService.readFile(projectId, id, filePath);
+    }
+
+    @PostMapping("/{id}/new-version")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ReviewRunDto createNewVersion(
+            @PathVariable Long projectId,
+            @PathVariable Long id,
+            @RequestBody List<StoredFileDto> files) {
+        return reviewRunService.createNewVersion(projectId, id, files);
     }
 }

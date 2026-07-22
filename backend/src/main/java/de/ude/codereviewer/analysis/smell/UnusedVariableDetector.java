@@ -42,7 +42,8 @@ public class UnusedVariableDetector implements SmellDetector {
                             "UNUSED_VARIABLE",
                             Severity.INFO,
                             "Lokale Variable '" + name + "' wird nie verwendet.",
-                            "Ungenutzte Variable entfernen."));
+                            "Ungenutzte Variable entfernen.",
+                            "AST", null));
                 }
             }
         }

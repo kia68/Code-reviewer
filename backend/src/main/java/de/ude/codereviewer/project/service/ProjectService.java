@@ -55,6 +55,13 @@ public class ProjectService {
         return mapToDto(project);
     }
 
+    @Transactional
+    public void deleteProject(Long id) {
+        Project project = projectRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found with id: " + id));
+        projectRepository.delete(project);
+    }
+
     private ProjectDto mapToDto(Project project) {
         return ProjectDto.builder()
                 .id(project.getId())

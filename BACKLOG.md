@@ -104,13 +104,13 @@ Repo, CI/CD und lokale Entwicklungsumgebung stehen, damit alle drei Personen ab 
 `epic` `area:vscode` · Meilenstein: M4
 
 1. **US7.1** — Als Entwickler:in möchte ich per Command Palette „Review starten“ aus VS Code auslösen können, damit ich meinen Editor nicht verlassen muss.
-   `area:vscode` `prio:must`
+   `area:vscode` `prio:must` ✅ erledigt (`codeReviewer.startReview`, Upload + Analyse der aktiven `.java`-Datei über bestehende Backend-API)
 2. **US7.2** — Als Entwickler:in möchte ich Findings als native Diagnostics (Squiggly Lines) im Editor sehen, damit sie sich wie gewohnte Fehler-/Warnhinweise verhalten.
-   `area:vscode` `prio:must`
+   `area:vscode` `prio:must` ✅ erledigt (`DiagnosticCollection`, Severity→Error/Warning/Information gemappt, pro Zeile)
 3. **US7.3** — Als Entwickler:in möchte ich per Hover die Begründung und den Vorschlag sehen, damit ich ohne Kontextwechsel weiterarbeiten kann.
-   `area:vscode` `prio:should`
+   `area:vscode` `prio:should` ✅ erledigt (custom `HoverProvider`, zeigt Kategorie/Severity/Begründung/Vorschlag als Markdown)
 4. **US7.4** — Als Entwickler:in möchte ich einen Vorschlag per Quick-Fix direkt übernehmen können, damit Korrekturen schneller gehen.
-   `area:vscode` `prio:could` (Stretch)
+   `area:vscode` `prio:could` (Stretch) ✅ erledigt (`CodeActionProvider`: echte Zeile-löschen-Fix für `UNUSED_VARIABLE`, TODO-Kommentar-Fix als Fallback für alle anderen Kategorien)
 
 ## E8 – Qualitätssicherung & Deployment
 `epic` `area:infra` · Meilenstein: M4

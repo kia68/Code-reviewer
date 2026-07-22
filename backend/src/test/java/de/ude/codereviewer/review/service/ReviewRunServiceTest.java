@@ -8,10 +8,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import de.ude.codereviewer.analysis.ReviewEngine;
 import de.ude.codereviewer.analysis.ast.AstParserService;
 import de.ude.codereviewer.analysis.smell.DetectedSmell;
 import de.ude.codereviewer.analysis.smell.SmellDetectionService;
-import de.ude.codereviewer.analysis.smell.SmellReport;
 import de.ude.codereviewer.ingestion.service.CodeStorageService;
 import de.ude.codereviewer.ingestion.service.GitCodeImportService;
 import de.ude.codereviewer.ingestion.service.IngestionResult;
@@ -25,14 +25,14 @@ import de.ude.codereviewer.review.model.ReviewStatus;
 import de.ude.codereviewer.review.model.Severity;
 import de.ude.codereviewer.review.repository.FindingRepository;
 import de.ude.codereviewer.review.repository.ReviewRunRepository;
-import java.time.LocalDateTime;
+import de.ude.codereviewer.review.repository.StoredFileRepository;
 import java.util.List;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
@@ -55,6 +55,9 @@ class ReviewRunServiceTest {
     private FindingRepository findingRepository;
 
     @Mock
+    private StoredFileRepository storedFileRepository;
+
+    @Mock
     private CodeStorageService codeStorageService;
 
     @Mock
@@ -66,13 +69,28 @@ class ReviewRunServiceTest {
     @Mock
     private SmellDetectionService smellDetectionService;
 
-    @InjectMocks
+    // The analyze flow now fans out over the injected ReviewEngine list (AST + LLM), so the
+    // service is built by hand to keep control over exactly which engines are present.
+    @Mock
+    private ReviewEngine astEngine;
+
     private ReviewRunService reviewRunService;
 
     private Project project;
 
     @BeforeEach
     void setUp() {
+        reviewRunService = new ReviewRunService(
+                reviewRunRepository,
+                projectRepository,
+                findingRepository,
+                storedFileRepository,
+                codeStorageService,
+                gitCodeImportService,
+                astParserService,
+                smellDetectionService,
+                List.of(astEngine));
+
         project = Project.builder()
                 .id(PROJECT_ID)
                 .name("Demo")
@@ -197,9 +215,9 @@ class ReviewRunServiceTest {
     void analyzeFindingsClearsPreviousFindingsBeforeSaving() {
         ReviewRun run = persistedRun("/data/42", ReviewStatus.COMPLETED);
         when(reviewRunRepository.findById(REVIEW_RUN_ID)).thenReturn(Optional.of(run));
-        when(smellDetectionService.detectSmells(any()))
-                .thenReturn(new SmellReport(List.of(new DetectedSmell(
-                        "Hello.java", 3, "UNUSED_VARIABLE", Severity.INFO, "unused", "remove it"))));
+        when(astEngine.analyze(any()))
+                .thenReturn(List.of(new DetectedSmell(
+                        "Hello.java", 3, "UNUSED_VARIABLE", Severity.INFO, "unused", "remove it", "AST", null)));
         when(findingRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         List<FindingDto> findings = reviewRunService.analyzeFindings(PROJECT_ID, REVIEW_RUN_ID);
@@ -217,9 +235,9 @@ class ReviewRunServiceTest {
     void analyzeFindingsMapsSmellFieldsOntoFindingEntity() {
         ReviewRun run = persistedRun("/data/42", ReviewStatus.COMPLETED);
         when(reviewRunRepository.findById(REVIEW_RUN_ID)).thenReturn(Optional.of(run));
-        when(smellDetectionService.detectSmells(any()))
-                .thenReturn(new SmellReport(List.of(new DetectedSmell(
-                        "Deep.java", 12, "DEEP_NESTING", Severity.WARNING, "too deep", "extract method"))));
+        when(astEngine.analyze(any()))
+                .thenReturn(List.of(new DetectedSmell(
+                        "Deep.java", 12, "DEEP_NESTING", Severity.WARNING, "too deep", "extract method", "AST", null)));
         when(findingRepository.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         reviewRunService.analyzeFindings(PROJECT_ID, REVIEW_RUN_ID);

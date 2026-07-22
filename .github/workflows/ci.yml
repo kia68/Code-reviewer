@@ -75,3 +75,33 @@ jobs:
         run: |
           cd frontend
           npm run build
+
+  build-vscode-extension:
+    name: Build & Test VS-Code Extension
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: vscode-extension/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd vscode-extension
+          npm ci
+
+      - name: Compile
+        run: |
+          cd vscode-extension
+          npm run compile
+
+      - name: Test
+        run: |
+          cd vscode-extension
+          npm test
