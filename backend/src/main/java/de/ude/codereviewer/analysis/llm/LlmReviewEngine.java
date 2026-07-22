@@ -14,7 +14,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.stream.Stream;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -25,10 +24,17 @@ import org.springframework.stereotype.Component;
 public class LlmReviewEngine implements ReviewEngine {
 
     private final ClaudeClient claudeClient;
+    private final OpenAiClient openAiClient;
     private final ClaudeToolSchemas toolSchemas;
     private final LlmReviewCache cache;
     private final TokenBudgetGuard budgetGuard;
     private final LlmProperties properties;
+
+    @jakarta.annotation.PostConstruct
+    public void init() {
+        log.info("Initialized LlmReviewEngine for provider={}, model={}, baseUrl={}",
+            properties.provider(), properties.model(), properties.baseUrl());
+    }
 
     private static final String PROMPT_VERSION = "v1";
     private volatile boolean budgetExceeded = false;
@@ -93,40 +99,51 @@ public class LlmReviewEngine implements ReviewEngine {
     }
 
     private List<FindingDraft> runCycle(String code) {
+        if ("openai".equalsIgnoreCase(properties.provider())) {
+            log.info("OpenAI-Call: model={} baseUrl={}", properties.model(), properties.baseUrl());
+            int estimate = code.length() / 4 + 500;
+            budgetGuard.checkBudget(estimate);
+            return openAiClient.requestFindings(PromptTemplates.generatePrompt(code));
+        }
+
         int rounds = Math.max(0, properties.maxReflectRounds());
         budgetGuard.checkBudget(estimateTokens(code, rounds));
 
         List<FindingDraft> findings = generate(code);
 
-        // Optional self-critique passes. rounds=0 keeps the single generate call
-        // (cheapest + fastest, no over-pruning); each round adds a reflect+refine
-        // pair. Honors codereviewer.llm.max-reflect-rounds.
         for (int i = 0; i < rounds; i++) {
             ReflectionResult reflection = reflect(code, findings);
             findings = refine(code, findings, reflection);
         }
+
         return findings;
     }
 
     private List<FindingDraft> generate(String code) {
-        String prompt = PromptTemplates.generatePrompt(code);
-        var response = claudeClient.callWithTool(prompt, toolSchemas.submitFindings(), "submit_findings");
-        budgetGuard.recordActualUsage(response.usage().total());
-        return response.extractToolInput("findings", FindingDraft.class);
+        var resp = claudeClient.callWithTool(
+            PromptTemplates.generatePrompt(code),
+            toolSchemas.submitFindings(),
+            "submit_findings"
+        );
+        return resp.extractToolInput("findings", FindingDraft.class);
     }
 
-    private ReflectionResult reflect(String code, List<FindingDraft> initial) {
-        String prompt = PromptTemplates.reflectPrompt(code, initial);
-        var response = claudeClient.callWithTool(prompt, toolSchemas.submitReflection(), "submit_reflection");
-        budgetGuard.recordActualUsage(response.usage().total());
-        return response.extractToolInputAs(ReflectionResult.class);
+    private ReflectionResult reflect(String code, List<FindingDraft> currentFindings) {
+        var resp = claudeClient.callWithTool(
+            PromptTemplates.reflectPrompt(code, currentFindings),
+            toolSchemas.submitReflection(),
+            "submit_reflection"
+        );
+        return resp.extractToolInputAs(ReflectionResult.class);
     }
 
-    private List<FindingDraft> refine(String code, List<FindingDraft> initial, ReflectionResult reflection) {
-        String prompt = PromptTemplates.refinePrompt(code, initial, reflection);
-        var response = claudeClient.callWithTool(prompt, toolSchemas.submitFindings(), "submit_findings");
-        budgetGuard.recordActualUsage(response.usage().total());
-        return response.extractToolInput("findings", FindingDraft.class);
+    private List<FindingDraft> refine(String code, List<FindingDraft> currentFindings, ReflectionResult reflection) {
+        var resp = claudeClient.callWithTool(
+            PromptTemplates.refinePrompt(code, currentFindings, reflection),
+            toolSchemas.submitFindings(),
+            "submit_findings"
+        );
+        return resp.extractToolInput("findings", FindingDraft.class);
     }
 
     private DetectedSmell toDetectedSmell(String filePath, FindingDraft draft, int lineCount) {
@@ -135,7 +152,7 @@ public class LlmReviewEngine implements ReviewEngine {
             filePath,
             line,
             draft.type(),
-            Severity.valueOf(draft.severity()),
+            severityOrDefault(draft.severity()),
             draft.message(),
             draft.suggestion(),
             source().name(),
@@ -143,11 +160,22 @@ public class LlmReviewEngine implements ReviewEngine {
         );
     }
 
-    private int estimateTokens(String code, int rounds) {
+    private Severity severityOrDefault(String raw) {
+        if (raw == null) {
+            return Severity.INFO;
+        }
+        try {
+            return Severity.valueOf(raw.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            log.warn("Unbekannter Severity-Wert '{}' vom Modell, nutze INFO", raw);
+            return Severity.INFO;
+        }
+    }
+
+    private int estimateTokens(String code, int reflectRounds) {
         int codeTokens = code.length() / 4;
         int promptOverhead = 500;
-        int perCall = codeTokens + promptOverhead;
-        int calls = 1 + 2 * rounds; // generate + (reflect+refine) per round
-        return perCall * calls;
+        int callCount = 1 + (reflectRounds * 2);
+        return (codeTokens + promptOverhead) * callCount;
     }
 }

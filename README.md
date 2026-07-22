@@ -205,54 +205,76 @@ cd backend
 
 ---
 
-### 2.1 LLM-API-Schlüssel konfigurieren (optional)
+### 2.1 LLM-API-Schlüssel & Provider konfigurieren (optional)
 
-Das Backend unterstützt optionale KI-gestützte Code-Reviews über die Anthropic Claude API. Ohne einen API-Schlüssel werden **nur die statischen AST-Analysen** (lange Methoden, tiefe Verschachtelung, ungenutzte Variablen) ausgeführt – das Tool funktioniert ansonsten vollständig.
+Das Backend unterstützt flexible KI-gestützte Code-Reviews über **Anthropic Claude** sowie **OpenAI-kompatible APIs** (z. B. **GWDG AcademicCloud SAIA / Chat AI**). Ohne einen API-Schlüssel werden **nur die statischen AST-Analysen** (lange Methoden, tiefe Verschachtelung, ungenutzte Variablen) ausgeführt – das Tool funktioniert ansonsten vollständig.
 
-**So richtest du den LLM-Review ein:**
+---
 
-1. Einen API-Schlüssel bei [console.anthropic.com](https://console.anthropic.com/) erstellen.
+#### Option A: GWDG AcademicCloud / Chat AI (OpenAI-kompatibel, z. B. Qwen 2.5/3 Coder)
 
-2. Beim Starten des Backends die Umgebungsvariable `LLM_API_KEY` setzen:
+Die GWDG bietet Universitäten und Forschungseinrichtungen kostenlosen Zugriff auf Open-Source-Modelle über einen OpenAI-kompatiblen Endpoint.
 
-```bash
-# Variante A: Lokaler Start (Host), direkt beim Befehl (bash)
-LLM_API_KEY="sk-ant-..." ./gradlew bootRun
-
-# Variante B: Lokaler Start (Host), vorher exportieren
-export LLM_API_KEY="sk-ant-..."   # bash
-./gradlew bootRun
-```
-
+**Einrichten in PowerShell (Windows):**
 ```powershell
-# Variante A/B unter Windows PowerShell
-$env:LLM_API_KEY = "sk-ant-..."
-.\gradlew bootRun
+$env:LLM_PROVIDER = "openai"
+$env:LLM_BASE_URL = "https://chat-ai.academiccloud.de/v1"
+$env:LLM_API_KEY  = "<Dein GWDG API-Key>"
+$env:LLM_MODEL    = "qwen3-coder-next"   # oder meta-llama-3.1-8b-instruct, devstral-2-123b-instruct-2512, mistral-medium-3.5-128b
+
+# Docker Stack neu starten:
+docker compose up --build -d
 ```
 
+**Einrichten in Bash (Linux/macOS):**
 ```bash
-# Variante C: Docker Compose – Schlüssel in der Shell setzen, dann starten.
-# docker-compose.yml reicht LLM_API_KEY über ${LLM_API_KEY:-} an den Backend-Container durch;
-# ist die Variable nicht gesetzt, bleibt sie leer (nur AST).
-export LLM_API_KEY="sk-ant-..."       # bzw. $env:LLM_API_KEY = "sk-ant-..." in PowerShell
-docker compose up --build
+export LLM_PROVIDER="openai"
+export LLM_BASE_URL="https://chat-ai.academiccloud.de/v1"
+export LLM_API_KEY="<Dein GWDG API-Key>"
+export LLM_MODEL="qwen3-coder-next"
+
+docker compose up --build -d
 ```
 
-3. Das Backend erkennt den Schlüssel automatisch und aktiviert den LLM-Review für alle hochgeladenen Projekte.
-   Kontrolle: `docker compose logs backend | grep LLM` – erscheint `LLM API key not configured`, ist kein
-   Schlüssel angekommen; ohne diese Meldung läuft der LLM-Review.
+---
 
-**Weitere LLM-Einstellungen** (in `application.yml` unter `codereviewer.llm` konfigurierbar):
+#### Option B: Anthropic Claude API (Standard / Default)
+
+**Einrichten in PowerShell (Windows):**
+```powershell
+$env:LLM_PROVIDER = "anthropic"
+$env:LLM_BASE_URL = "https://api.anthropic.com"
+$env:LLM_API_KEY  = "sk-ant-api03-..."
+$env:LLM_MODEL    = "claude-sonnet-4-5-20250929"
+
+docker compose up --build -d
+```
+
+**Einrichten in Bash (Linux/macOS):**
+```bash
+export LLM_PROVIDER="anthropic"
+export LLM_BASE_URL="https://api.anthropic.com"
+export LLM_API_KEY="sk-ant-api03-..."
+export LLM_MODEL="claude-sonnet-4-5-20250929"
+
+docker compose up --build -d
+```
+
+---
+
+#### ⚙️ LLM-Konfigurationsvariablen Übersicht
 
 | Variable | Standard | Beschreibung |
 |---|---|---|
-| `LLM_API_KEY` | *(leer)* | Anthropic API-Schlüssel |
-| `codereviewer.llm.model` | `claude-sonnet-4-5` | Claude-Modell |
+| `LLM_PROVIDER` | `anthropic` | Provider-Wahl: `anthropic` (Claude) oder `openai` (GWDG / OpenAI) |
+| `LLM_BASE_URL` | `https://api.anthropic.com` | Base-URL des API-Endpoints |
+| `LLM_API_KEY` | *(leer)* | API-Schlüssel / Bearer Token |
+| `LLM_MODEL` | `claude-sonnet-4-5-20250929` | Exakte Modell-ID (z. B. `qwen3-coder-next` für GWDG) |
 | `codereviewer.llm.daily-token-budget` | `200000` | Tägliches Token-Limit |
-| `codereviewer.llm.max-tokens-per-call` | `2048` | Maximale Tokens pro API-Call |
-| `codereviewer.llm.cache-enabled` | `true` | Ergebnisse zwischenspeichern |
+| `codereviewer.llm.max-tokens-per-call` | `8192` | Maximale Tokens pro API-Call |
+| `codereviewer.llm.cache-enabled` | `true` | Ergebnisse im Cache zwischenspeichern |
 
-> **Hinweis:** Ohne `LLM_API_KEY` überspringt das Backend LLM-Aufrufe komplett (kein Fehler, nur Info-Log). Die tokenbasierte Budgetbegrenzung schützt vor unbegrenztem API-Verbrauch.
+> **Hinweis:** Ohne `LLM_API_KEY` überspringt das Backend LLM-Aufrufe komplett (kein Fehler, nur Info-Log). Alle KI-gestützten Befunde (egal ob von Anthropic oder GWDG Qwen) werden mit der Quelle `source: "LLM"` markiert und erscheinen mit dem **🤖 KI-Badge** im Frontend und in VS Code.
 
 ---
 

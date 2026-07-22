@@ -51,9 +51,9 @@ app:
 
 codereviewer:
   llm:
-    provider: anthropic
+    provider: ${LLM_PROVIDER:anthropic}
     api-key: ${LLM_API_KEY:}
-    base-url: https://api.anthropic.com
+    base-url: ${LLM_BASE_URL:https://api.anthropic.com}
     model: ${LLM_MODEL:claude-sonnet-4-5-20250929}
     max-tokens-per-call: ${LLM_MAX_TOKENS:8192}
     max-reflect-rounds: ${LLM_MAX_REFLECT_ROUNDS:0}
