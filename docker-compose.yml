@@ -26,8 +26,8 @@ services:
       DB_NAME: codereviewer
       DB_USERNAME: postgres
       DB_PASSWORD: password
-      # LLM-Review nur aktiv, wenn LLM_API_KEY in der Shell gesetzt ist; sonst leer -> LLM wird übersprungen (nur AST)
-      LLM_API_KEY: ${LLM_API_KEY:-}
+      # LLM-Review nur aktiv, wenn LLM_API_KEY oder ANTHROPIC_API_KEY in der Shell gesetzt ist; sonst leer -> LLM wird übersprungen (nur AST)
+      LLM_API_KEY: ${LLM_API_KEY:-${ANTHROPIC_API_KEY:-}}
     ports:
       - "8080:8080"
     depends_on:

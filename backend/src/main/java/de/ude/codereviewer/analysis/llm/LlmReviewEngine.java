@@ -93,11 +93,19 @@ public class LlmReviewEngine implements ReviewEngine {
     }
 
     private List<FindingDraft> runCycle(String code) {
-        budgetGuard.checkBudget(estimateTokens(code));
+        int rounds = Math.max(0, properties.maxReflectRounds());
+        budgetGuard.checkBudget(estimateTokens(code, rounds));
 
-        List<FindingDraft> initial = generate(code);
-        ReflectionResult reflection = reflect(code, initial);
-        return refine(code, initial, reflection);
+        List<FindingDraft> findings = generate(code);
+
+        // Optional self-critique passes. rounds=0 keeps the single generate call
+        // (cheapest + fastest, no over-pruning); each round adds a reflect+refine
+        // pair. Honors codereviewer.llm.max-reflect-rounds.
+        for (int i = 0; i < rounds; i++) {
+            ReflectionResult reflection = reflect(code, findings);
+            findings = refine(code, findings, reflection);
+        }
+        return findings;
     }
 
     private List<FindingDraft> generate(String code) {
@@ -135,10 +143,11 @@ public class LlmReviewEngine implements ReviewEngine {
         );
     }
 
-    private int estimateTokens(String code) {
+    private int estimateTokens(String code, int rounds) {
         int codeTokens = code.length() / 4;
         int promptOverhead = 500;
         int perCall = codeTokens + promptOverhead;
-        return perCall * 3;
+        int calls = 1 + 2 * rounds; // generate + (reflect+refine) per round
+        return perCall * calls;
     }
 }

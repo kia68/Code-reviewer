@@ -27,6 +27,10 @@ export interface Finding {
   severity: Severity;
   description: string;
   suggestion: string | null;
+  // Origin of the finding as reported by the backend: "LLM" (KI review) or
+  // "AST" (static analysis). Optional: may be missing on findings persisted
+  // before the field existed.
+  source?: string | null;
 }
 
 export class CodeReviewerApiError extends Error {

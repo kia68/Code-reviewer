@@ -43,3 +43,7 @@ pgdata/
 
 # Demo-Artefakt: wird aus demo/src erzeugt (siehe docs/DEMO.md)
 demo/demo-project.zip
+
+# Umgebungsspezifische Proxy-CA-Zertifikate (nicht committen); Ordner via .keep behalten
+backend/certs/*.crt
+!backend/certs/.keep
