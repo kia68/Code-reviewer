@@ -96,6 +96,43 @@ cd backend
 
 ---
 
+### 2.1 LLM-API-Schlüssel konfigurieren (optional)
+
+Das Backend unterstützt optionale KI-gestützte Code-Reviews über die Anthropic Claude API. Ohne einen API-Schlüssel werden **nur die statischen AST-Analysen** (lange Methoden, tiefe Verschachtelung, ungenutzte Variablen) ausgeführt – das Tool funktioniert otherwise vollständig.
+
+**So richtest du den LLM-Review ein:**
+
+1. Einen API-Schlüssel bei [console.anthropic.com](https://console.anthropic.com/) erstellen.
+
+2. Beim Starten des Backends die Umgebungsvariable `LLM_API_KEY` setzen:
+
+```bash
+# Variante A: Direkt beim Start
+LLM_API_KEY="sk-ant-..." ./gradlew bootRun
+
+# Variante B: In einer .env-Datei (mit z.B. direkten Export)
+export LLM_API_KEY="sk-ant-..."
+./gradlew bootRun
+
+# Variante C: In docker-compose.yml als Umgebungsvariable
+```
+
+3. Das Backend erkennt den Schlüssel automatisch und aktiviert den LLM-Review für alle hochgeladenen Projekte.
+
+**Weitere LLM-Einstellungen** (in `application.yml` unter `codereviewer.llm` konfigurierbar):
+
+| Variable | Standard | Beschreibung |
+|---|---|---|
+| `LLM_API_KEY` | *(leer)* | Anthropic API-Schlüssel |
+| `codereviewer.llm.model` | `claude-sonnet-4-5` | Claude-Modell |
+| `codereviewer.llm.daily-token-budget` | `200000` | Tägliches Token-Limit |
+| `codereviewer.llm.max-tokens-per-call` | `2048` | Maximale Tokens pro API-Call |
+| `codereviewer.llm.cache-enabled` | `true` | Ergebnisse zwischenspeichern |
+
+> **Hinweis:** Ohne `LLM_API_KEY` überspringt das Backend LLM-Aufrufe komplett (kein Fehler, nur Info-Log). Die tokenbasierte Budgetbegrenzung schützt vor unbegrenztem API-Verbrauch.
+
+---
+
 ### 3. Frontend starten
 Navigiere in den Frontend-Ordner, installiere die Abhängigkeiten und starte den Entwicklungsserver:
 
@@ -168,9 +205,6 @@ VS-Code-Settings (`Strg+,`) → nach „Code Reviewer" suchen, falls das Backend
 #### 4.5 Aktuelle Einschränkungen
 
 * Nur einzelne `.java`-Dateien (die gerade aktive Datei), keine ganzen Ordner/Projekte über den Command.
-* Nur statische Analyse (lange Methoden, tiefe Verschachtelung, ungenutzte Variablen) sichtbar – die
-  LLM-Findings (Generate-Reflect-Refine) landen automatisch mit im selben Endpunkt, sobald diese Arbeit
-  im Backend gemergt ist; am Plugin ändert sich dafür nichts.
 * Quick-Fix mit echtem Code-Edit gibt es nur für „ungenutzte Variable"; alle anderen Kategorien bekommen
   einen TODO-Kommentar statt eines automatischen Fixes, weil sich deren Vorschläge nicht sicher automatisch
   umsetzen lassen (z. B. „Methode aufteilen").
