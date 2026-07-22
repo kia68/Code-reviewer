@@ -4,6 +4,7 @@ import de.ude.codereviewer.analysis.ReviewEngine;
 import de.ude.codereviewer.analysis.llm.cache.LlmReviewCache;
 import de.ude.codereviewer.analysis.llm.dto.FindingDraft;
 import de.ude.codereviewer.analysis.llm.dto.ReflectionResult;
+import de.ude.codereviewer.analysis.llm.exception.LlmBudgetExceededException;
 import de.ude.codereviewer.analysis.llm.ratelimit.TokenBudgetGuard;
 import de.ude.codereviewer.analysis.smell.DetectedSmell;
 import de.ude.codereviewer.review.model.Severity;
@@ -30,13 +31,30 @@ public class LlmReviewEngine implements ReviewEngine {
     private final LlmProperties properties;
 
     private static final String PROMPT_VERSION = "v1";
+    private volatile boolean budgetExceeded = false;
 
     @Override
     public List<DetectedSmell> analyze(Path sourcePath) {
+        if (properties.apiKey() == null || properties.apiKey().isBlank()) {
+            log.info("LLM API key not configured — skipping LLM review");
+            return List.of();
+        }
+        budgetExceeded = false;
         try (Stream<Path> paths = Files.walk(sourcePath)) {
             return paths
                 .filter(p -> p.toString().endsWith(".java"))
-                .flatMap(javaFile -> analyzeFile(javaFile).stream())
+                .flatMap(javaFile -> {
+                    try {
+                        return analyzeFile(sourcePath, javaFile).stream();
+                    } catch (LlmBudgetExceededException e) {
+                        log.warn("Token budget exceeded, skipping remaining files: {}", e.getMessage());
+                        budgetExceeded = true;
+                        return Stream.empty();
+                    } catch (Exception e) {
+                        log.warn("LLM analysis failed for {}: {}", javaFile, e.getMessage());
+                        return Stream.empty();
+                    }
+                })
                 .toList();
         } catch (IOException e) {
             throw new UncheckedIOException("Konnte Quellverzeichnis nicht durchsuchen: " + sourcePath, e);
@@ -48,8 +66,10 @@ public class LlmReviewEngine implements ReviewEngine {
         return FindingSource.LLM;
     }
 
-    private List<DetectedSmell> analyzeFile(Path javaFile) {
-        String relativePath = javaFile.toString();
+    private List<DetectedSmell> analyzeFile(Path sourcePath, Path javaFile) {
+        if (budgetExceeded) return List.of();
+
+        String relativePath = sourcePath.relativize(javaFile).toString();
         String content;
         try {
             content = Files.readString(javaFile);
@@ -58,22 +78,22 @@ public class LlmReviewEngine implements ReviewEngine {
             return List.of();
         }
 
-        // Sehr kleine/leere Dateien überspringen, um unnötige API-Calls zu vermeiden
         if (content.isBlank() || content.lines().count() < 3) {
             return List.of();
         }
 
+        int lineCount = (int) content.lines().count();
         String cacheKey = cache.buildKey(content, PROMPT_VERSION, properties.model());
 
         List<FindingDraft> refinedFindings = cache.get(cacheKey, () -> runCycle(content));
 
         return refinedFindings.stream()
-            .map(draft -> toDetectedSmell(relativePath, draft))
+            .map(draft -> toDetectedSmell(relativePath, draft, lineCount))
             .toList();
     }
 
     private List<FindingDraft> runCycle(String code) {
-        budgetGuard.checkAndReserve(estimateTokens(code));
+        budgetGuard.checkBudget(estimateTokens(code));
 
         List<FindingDraft> initial = generate(code);
         ReflectionResult reflection = reflect(code, initial);
@@ -101,19 +121,24 @@ public class LlmReviewEngine implements ReviewEngine {
         return response.extractToolInput("findings", FindingDraft.class);
     }
 
-    private DetectedSmell toDetectedSmell(String filePath, FindingDraft draft) {
+    private DetectedSmell toDetectedSmell(String filePath, FindingDraft draft, int lineCount) {
+        int line = Math.max(1, Math.min(draft.lineStart(), lineCount));
         return new DetectedSmell(
             filePath,
-            draft.lineStart(),
+            line,
             draft.type(),
             Severity.valueOf(draft.severity()),
             draft.message(),
-            draft.suggestion()
+            draft.suggestion(),
+            source().name(),
+            draft.confidence()
         );
     }
 
     private int estimateTokens(String code) {
-        // grobe Heuristik: ~4 Zeichen pro Token, x3 für Generate+Reflect+Refine
-        return (code.length() / 4) * 3;
+        int codeTokens = code.length() / 4;
+        int promptOverhead = 500;
+        int perCall = codeTokens + promptOverhead;
+        return perCall * 3;
     }
 }

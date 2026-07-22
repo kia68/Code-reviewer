@@ -28,44 +28,38 @@ public class TokenBudgetGuard {
     private final AtomicReference<LocalDate> currentTrackingDay = new AtomicReference<>(LocalDate.now());
 
     /**
-     * Reserviert vorab die geschätzte Anzahl an Tokens für einen
-     * anstehenden Review-Zyklus (Generate + Reflect + Refine).
-     * Wirft eine Exception, falls dadurch das Tages-Budget überschritten würde.
+     * Prüft, ob das geschätzte Token-Budget für einen Review-Zyklus
+     * noch ausreicht. Wirft eine Exception, falls das Tages-Budget
+     * überschritten wäre.
      *
      * @param estimatedTokens grobe Schätzung des Token-Verbrauchs vor dem eigentlichen Call
      * @throws LlmBudgetExceededException falls das Tages-Budget überschritten wäre
      */
-    public void checkAndReserve(int estimatedTokens) {
+    public void checkBudget(int estimatedTokens) {
         resetIfNewDay();
 
-        int updatedTotal = tokensUsedToday.addAndGet(estimatedTokens);
-
-        if (updatedTotal > properties.dailyTokenBudget()) {
-            // Reservierung zurücknehmen, da der Call nicht durchgeführt werden darf
-            tokensUsedToday.addAndGet(-estimatedTokens);
+        int current = tokensUsedToday.get();
+        if (current + estimatedTokens > properties.dailyTokenBudget()) {
             throw new LlmBudgetExceededException(
                 "Tägliches Token-Budget überschritten: benötigt=%d, bereits verbraucht=%d, Limit=%d"
-                    .formatted(estimatedTokens, updatedTotal - estimatedTokens, properties.dailyTokenBudget()));
+                    .formatted(estimatedTokens, current, properties.dailyTokenBudget()));
         }
 
-        log.debug("Token-Reservierung: +{} Tokens, Tagesverbrauch jetzt {}/{}",
-                estimatedTokens, updatedTotal, properties.dailyTokenBudget());
+        log.debug("Budget-Check OK: +{} Tokens geschätzt, Tagesverbrauch {}/{}",
+                estimatedTokens, current, properties.dailyTokenBudget());
     }
 
     /**
-     * Korrigiert die Buchung nachträglich mit dem tatsächlichen
-     * Token-Verbrauch, den die Claude-API-Response zurückgemeldet hat
-     * (siehe ClaudeResponse.usage()). Die anfängliche Schätzung in
-     * checkAndReserve() ist nur eine grobe Vorab-Reservierung.
+     * Erfasst den tatsächlichen Token-Verbrauch eines API-Calls
+     * und aktualisiert den Tageszähler.
      *
      * @param actualTokens tatsächlicher Verbrauch aus response.usage().total()
      */
     public void recordActualUsage(int actualTokens) {
         resetIfNewDay();
-        log.debug("Tatsächlicher Token-Verbrauch dieses Calls: {}", actualTokens);
-        // Hinweis: Hier bewusst kein erneutes addAndGet(), da bereits in
-        // checkAndReserve() reserviert wurde. Diese Methode dient primär
-        // dem Logging/Monitoring der tatsächlichen vs. geschätzten Werte.
+        int total = tokensUsedToday.addAndGet(actualTokens);
+        log.debug("Tatsächlicher Token-Verbrauch: +{}, Tagesverbrauch jetzt {}/{}",
+                actualTokens, total, properties.dailyTokenBudget());
     }
 
     /**

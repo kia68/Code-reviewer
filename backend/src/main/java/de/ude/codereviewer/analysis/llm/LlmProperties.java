@@ -2,7 +2,7 @@ package de.ude.codereviewer.analysis.llm;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@ConfigurationProperties(prefix = "llm")
+@ConfigurationProperties(prefix = "codereviewer.llm")
 public record LlmProperties(
     String provider,
     String apiKey,
